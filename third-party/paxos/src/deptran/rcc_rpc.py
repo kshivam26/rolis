@@ -14,19 +14,26 @@ TxDispatchRequest = Marshal.reg_type('TxDispatchRequest', [('id', 'rrr::i32'), (
 
 TxnDispatchResponse = Marshal.reg_type('TxnDispatchResponse', [])
 
+BalValResult = Marshal.reg_type('BalValResult', [('ballot', 'rrr::i32'), ('valid', 'rrr::i32')])
+
+BulkPrepare2Result = Marshal.reg_type('BulkPrepare2Result', [('ballot', 'rrr::i32'), ('valid', 'rrr::i32'), ('ret', 'MarshallDeputy')])
+
 class MultiPaxosService(object):
-    FORWARD = 0x1f300b37
-    PREPARE = 0x3ed339bc
-    ACCEPT = 0x2c1aa5e7
-    DECIDE = 0x1e2df369
-    HEARTBEAT = 0x249987b3
-    BULKPREPARE = 0x3094a906
-    BULKACCEPT = 0x58ffece4
-    BULKPREPARE2 = 0x245ecf49
-    SYNCLOG = 0x692edba6
-    SYNCCOMMIT = 0x54c77d9a
-    SYNCNOOPS = 0x23b1c916
-    BULKDECIDE = 0x3ede1dac
+    FORWARD = 0x6584e1f8
+    PREPARE = 0x46f753d1
+    ACCEPT = 0x5bd81b61
+    DECIDE = 0x3e76579b
+    HEARTBEAT = 0x16c2a902
+    CRPCHEARTBEAT = 0x1b345efd
+    BULKPREPARE = 0x40f7fc10
+    BULKACCEPT = 0x3ab41538
+    CRPCBULKACCEPT = 0x13fbedd2
+    BULKPREPARE2 = 0x21f17702
+    SYNCLOG = 0x1387e08f
+    SYNCCOMMIT = 0x5e363c40
+    SYNCNOOPS = 0x34d864ed
+    BULKDECIDE = 0x427facc8
+    CRPCBULKDECIDE = 0x6ce9434e
 
     __input_type_info__ = {
         'Forward': ['MarshallDeputy'],
@@ -34,13 +41,16 @@ class MultiPaxosService(object):
         'Accept': ['uint64_t','ballot_t','MarshallDeputy'],
         'Decide': ['uint64_t','ballot_t','MarshallDeputy'],
         'Heartbeat': ['MarshallDeputy'],
+        'CrpcHeartbeat': ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'],
         'BulkPrepare': ['MarshallDeputy'],
         'BulkAccept': ['MarshallDeputy'],
+        'CrpcBulkAccept': ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'],
         'BulkPrepare2': ['MarshallDeputy'],
         'SyncLog': ['MarshallDeputy'],
         'SyncCommit': ['MarshallDeputy'],
         'SyncNoOps': ['MarshallDeputy'],
         'BulkDecide': ['MarshallDeputy'],
+        'CrpcBulkDecide': ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'],
     }
 
     __output_type_info__ = {
@@ -49,13 +59,16 @@ class MultiPaxosService(object):
         'Accept': ['ballot_t'],
         'Decide': [],
         'Heartbeat': ['rrr::i32','rrr::i32'],
+        'CrpcHeartbeat': [],
         'BulkPrepare': ['rrr::i32','rrr::i32'],
         'BulkAccept': ['rrr::i32','rrr::i32'],
+        'CrpcBulkAccept': [],
         'BulkPrepare2': ['rrr::i32','rrr::i32','MarshallDeputy'],
         'SyncLog': ['rrr::i32','rrr::i32','MarshallDeputy'],
         'SyncCommit': ['rrr::i32','rrr::i32'],
         'SyncNoOps': ['rrr::i32','rrr::i32'],
         'BulkDecide': ['rrr::i32','rrr::i32'],
+        'CrpcBulkDecide': [],
     }
 
     def __bind_helper__(self, func):
@@ -69,13 +82,16 @@ class MultiPaxosService(object):
         server.__reg_func__(MultiPaxosService.ACCEPT, self.__bind_helper__(self.Accept), ['uint64_t','ballot_t','MarshallDeputy'], ['ballot_t'])
         server.__reg_func__(MultiPaxosService.DECIDE, self.__bind_helper__(self.Decide), ['uint64_t','ballot_t','MarshallDeputy'], [])
         server.__reg_func__(MultiPaxosService.HEARTBEAT, self.__bind_helper__(self.Heartbeat), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
+        server.__reg_func__(MultiPaxosService.CRPCHEARTBEAT, self.__bind_helper__(self.CrpcHeartbeat), ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'], [])
         server.__reg_func__(MultiPaxosService.BULKPREPARE, self.__bind_helper__(self.BulkPrepare), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
         server.__reg_func__(MultiPaxosService.BULKACCEPT, self.__bind_helper__(self.BulkAccept), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
+        server.__reg_func__(MultiPaxosService.CRPCBULKACCEPT, self.__bind_helper__(self.CrpcBulkAccept), ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'], [])
         server.__reg_func__(MultiPaxosService.BULKPREPARE2, self.__bind_helper__(self.BulkPrepare2), ['MarshallDeputy'], ['rrr::i32','rrr::i32','MarshallDeputy'])
         server.__reg_func__(MultiPaxosService.SYNCLOG, self.__bind_helper__(self.SyncLog), ['MarshallDeputy'], ['rrr::i32','rrr::i32','MarshallDeputy'])
         server.__reg_func__(MultiPaxosService.SYNCCOMMIT, self.__bind_helper__(self.SyncCommit), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
         server.__reg_func__(MultiPaxosService.SYNCNOOPS, self.__bind_helper__(self.SyncNoOps), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
         server.__reg_func__(MultiPaxosService.BULKDECIDE, self.__bind_helper__(self.BulkDecide), ['MarshallDeputy'], ['rrr::i32','rrr::i32'])
+        server.__reg_func__(MultiPaxosService.CRPCBULKDECIDE, self.__bind_helper__(self.CrpcBulkDecide), ['uint64_t','MarshallDeputy','std::vector<uint16_t>','std::vector<BalValResult>'], [])
 
     def Forward(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own Forward function')
@@ -92,11 +108,17 @@ class MultiPaxosService(object):
     def Heartbeat(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own Heartbeat function')
 
+    def CrpcHeartbeat(__self__, id, cmd, addrChain, state):
+        raise NotImplementedError('subclass MultiPaxosService and implement your own CrpcHeartbeat function')
+
     def BulkPrepare(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own BulkPrepare function')
 
     def BulkAccept(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own BulkAccept function')
+
+    def CrpcBulkAccept(__self__, id, cmd, addrChain, state):
+        raise NotImplementedError('subclass MultiPaxosService and implement your own CrpcBulkAccept function')
 
     def BulkPrepare2(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own BulkPrepare2 function')
@@ -112,6 +134,9 @@ class MultiPaxosService(object):
 
     def BulkDecide(__self__, cmd):
         raise NotImplementedError('subclass MultiPaxosService and implement your own BulkDecide function')
+
+    def CrpcBulkDecide(__self__, id, cmd, addrChain, state):
+        raise NotImplementedError('subclass MultiPaxosService and implement your own CrpcBulkDecide function')
 
 class MultiPaxosProxy(object):
     def __init__(self, clnt):
@@ -132,11 +157,17 @@ class MultiPaxosProxy(object):
     def async_Heartbeat(__self__, cmd):
         return __self__.__clnt__.async_call(MultiPaxosService.HEARTBEAT, [cmd], MultiPaxosService.__input_type_info__['Heartbeat'], MultiPaxosService.__output_type_info__['Heartbeat'])
 
+    def async_CrpcHeartbeat(__self__, id, cmd, addrChain, state):
+        return __self__.__clnt__.async_call(MultiPaxosService.CRPCHEARTBEAT, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcHeartbeat'], MultiPaxosService.__output_type_info__['CrpcHeartbeat'])
+
     def async_BulkPrepare(__self__, cmd):
         return __self__.__clnt__.async_call(MultiPaxosService.BULKPREPARE, [cmd], MultiPaxosService.__input_type_info__['BulkPrepare'], MultiPaxosService.__output_type_info__['BulkPrepare'])
 
     def async_BulkAccept(__self__, cmd):
         return __self__.__clnt__.async_call(MultiPaxosService.BULKACCEPT, [cmd], MultiPaxosService.__input_type_info__['BulkAccept'], MultiPaxosService.__output_type_info__['BulkAccept'])
+
+    def async_CrpcBulkAccept(__self__, id, cmd, addrChain, state):
+        return __self__.__clnt__.async_call(MultiPaxosService.CRPCBULKACCEPT, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcBulkAccept'], MultiPaxosService.__output_type_info__['CrpcBulkAccept'])
 
     def async_BulkPrepare2(__self__, cmd):
         return __self__.__clnt__.async_call(MultiPaxosService.BULKPREPARE2, [cmd], MultiPaxosService.__input_type_info__['BulkPrepare2'], MultiPaxosService.__output_type_info__['BulkPrepare2'])
@@ -152,6 +183,9 @@ class MultiPaxosProxy(object):
 
     def async_BulkDecide(__self__, cmd):
         return __self__.__clnt__.async_call(MultiPaxosService.BULKDECIDE, [cmd], MultiPaxosService.__input_type_info__['BulkDecide'], MultiPaxosService.__output_type_info__['BulkDecide'])
+
+    def async_CrpcBulkDecide(__self__, id, cmd, addrChain, state):
+        return __self__.__clnt__.async_call(MultiPaxosService.CRPCBULKDECIDE, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcBulkDecide'], MultiPaxosService.__output_type_info__['CrpcBulkDecide'])
 
     def sync_Forward(__self__, cmd):
         __result__ = __self__.__clnt__.sync_call(MultiPaxosService.FORWARD, [cmd], MultiPaxosService.__input_type_info__['Forward'], MultiPaxosService.__output_type_info__['Forward'])
@@ -198,6 +232,15 @@ class MultiPaxosProxy(object):
         elif len(__result__[1]) > 1:
             return __result__[1]
 
+    def sync_CrpcHeartbeat(__self__, id, cmd, addrChain, state):
+        __result__ = __self__.__clnt__.sync_call(MultiPaxosService.CRPCHEARTBEAT, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcHeartbeat'], MultiPaxosService.__output_type_info__['CrpcHeartbeat'])
+        if __result__[0] != 0:
+            raise Exception("RPC returned non-zero error code %d: %s" % (__result__[0], os.strerror(__result__[0])))
+        if len(__result__[1]) == 1:
+            return __result__[1][0]
+        elif len(__result__[1]) > 1:
+            return __result__[1]
+
     def sync_BulkPrepare(__self__, cmd):
         __result__ = __self__.__clnt__.sync_call(MultiPaxosService.BULKPREPARE, [cmd], MultiPaxosService.__input_type_info__['BulkPrepare'], MultiPaxosService.__output_type_info__['BulkPrepare'])
         if __result__[0] != 0:
@@ -209,6 +252,15 @@ class MultiPaxosProxy(object):
 
     def sync_BulkAccept(__self__, cmd):
         __result__ = __self__.__clnt__.sync_call(MultiPaxosService.BULKACCEPT, [cmd], MultiPaxosService.__input_type_info__['BulkAccept'], MultiPaxosService.__output_type_info__['BulkAccept'])
+        if __result__[0] != 0:
+            raise Exception("RPC returned non-zero error code %d: %s" % (__result__[0], os.strerror(__result__[0])))
+        if len(__result__[1]) == 1:
+            return __result__[1][0]
+        elif len(__result__[1]) > 1:
+            return __result__[1]
+
+    def sync_CrpcBulkAccept(__self__, id, cmd, addrChain, state):
+        __result__ = __self__.__clnt__.sync_call(MultiPaxosService.CRPCBULKACCEPT, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcBulkAccept'], MultiPaxosService.__output_type_info__['CrpcBulkAccept'])
         if __result__[0] != 0:
             raise Exception("RPC returned non-zero error code %d: %s" % (__result__[0], os.strerror(__result__[0])))
         if len(__result__[1]) == 1:
@@ -261,35 +313,44 @@ class MultiPaxosProxy(object):
         elif len(__result__[1]) > 1:
             return __result__[1]
 
+    def sync_CrpcBulkDecide(__self__, id, cmd, addrChain, state):
+        __result__ = __self__.__clnt__.sync_call(MultiPaxosService.CRPCBULKDECIDE, [id, cmd, addrChain, state], MultiPaxosService.__input_type_info__['CrpcBulkDecide'], MultiPaxosService.__output_type_info__['CrpcBulkDecide'])
+        if __result__[0] != 0:
+            raise Exception("RPC returned non-zero error code %d: %s" % (__result__[0], os.strerror(__result__[0])))
+        if len(__result__[1]) == 1:
+            return __result__[1][0]
+        elif len(__result__[1]) > 1:
+            return __result__[1]
+
 class ClassicService(object):
-    MSGSTRING = 0x1d0eebab
-    MSGMARSHALL = 0x56332c42
-    DISPATCH = 0x4eeae560
-    PREPARE = 0x12c808be
-    COMMIT = 0x3f5f50ce
-    ABORT = 0x35c4289d
-    UPGRADEEPOCH = 0x606ad021
-    TRUNCATEEPOCH = 0x5aa4b85a
-    RPC_NULL = 0x62b4c084
-    TAPIRACCEPT = 0x386f2e01
-    TAPIRFASTACCEPT = 0x2800f924
-    TAPIRDECIDE = 0x3b2877f4
-    RCCDISPATCH = 0x137064c0
-    RCCFINISH = 0x14436ea6
-    RCCINQUIRE = 0x4177fa53
-    RCCDISPATCHRO = 0x5bc4ebfa
-    RCCINQUIREVALIDATION = 0x4611385a
-    RCCNOTIFYGLOBALVALIDATION = 0x1cae978d
-    JANUSDISPATCH = 0x2dcc423d
-    JANUSCOMMIT = 0x6f9254e7
-    JANUSCOMMITWOGRAPH = 0x1b3241f8
-    JANUSINQUIRE = 0x5ce268e9
-    JANUSPREACCEPT = 0x6a9a671f
-    JANUSPREACCEPTWOGRAPH = 0x10fe58f2
-    JANUSACCEPT = 0x158460fa
-    PREACCEPTFEBRUUS = 0x65ea71d0
-    ACCEPTFEBRUUS = 0x36085b2c
-    COMMITFEBRUUS = 0x551bbfaf
+    MSGSTRING = 0x322dbc03
+    MSGMARSHALL = 0x58dd0cdf
+    DISPATCH = 0x3a871f0b
+    PREPARE = 0x3c166c14
+    COMMIT = 0x35bc634b
+    ABORT = 0x10e6ee63
+    UPGRADEEPOCH = 0x2fb13918
+    TRUNCATEEPOCH = 0x6e757792
+    RPC_NULL = 0x34ac4a83
+    TAPIRACCEPT = 0x12fc5a7f
+    TAPIRFASTACCEPT = 0x2d100b66
+    TAPIRDECIDE = 0x1914c412
+    RCCDISPATCH = 0x5dcb3dfd
+    RCCFINISH = 0x54b09f2c
+    RCCINQUIRE = 0x12e6bbd9
+    RCCDISPATCHRO = 0x1fa74a96
+    RCCINQUIREVALIDATION = 0x55585835
+    RCCNOTIFYGLOBALVALIDATION = 0x5cf91fd7
+    JANUSDISPATCH = 0x2148d900
+    JANUSCOMMIT = 0x44b658cc
+    JANUSCOMMITWOGRAPH = 0x2a959a79
+    JANUSINQUIRE = 0x42cf3527
+    JANUSPREACCEPT = 0x1bbcc7d2
+    JANUSPREACCEPTWOGRAPH = 0x6ac35ff2
+    JANUSACCEPT = 0x5606c518
+    PREACCEPTFEBRUUS = 0x4aab2ede
+    ACCEPTFEBRUUS = 0x21c16143
+    COMMITFEBRUUS = 0x3b79ebb2
 
     __input_type_info__ = {
         'MsgString': ['std::string'],
@@ -813,10 +874,10 @@ class ClassicProxy(object):
             return __result__[1]
 
 class ServerControlService(object):
-    SERVER_SHUTDOWN = 0x190eb91f
-    SERVER_READY = 0x41ae209d
-    SERVER_HEART_BEAT_WITH_DATA = 0x393504f4
-    SERVER_HEART_BEAT = 0x1920fc51
+    SERVER_SHUTDOWN = 0x5c91834a
+    SERVER_READY = 0x228a578f
+    SERVER_HEART_BEAT_WITH_DATA = 0x28f068ea
+    SERVER_HEART_BEAT = 0x322d8c91
 
     __input_type_info__ = {
         'server_shutdown': [],
@@ -908,14 +969,14 @@ class ServerControlProxy(object):
             return __result__[1]
 
 class ClientControlService(object):
-    CLIENT_GET_TXN_NAMES = 0x20e359d6
-    CLIENT_SHUTDOWN = 0x2d619bad
-    CLIENT_FORCE_STOP = 0x596b5b38
-    CLIENT_RESPONSE = 0x3e9e633e
-    CLIENT_READY = 0x41451c54
-    CLIENT_READY_BLOCK = 0x2a473f8a
-    CLIENT_START = 0x2a2a7e21
-    DISPATCHTXN = 0x2e11b470
+    CLIENT_GET_TXN_NAMES = 0x2d6012de
+    CLIENT_SHUTDOWN = 0x27254b6f
+    CLIENT_FORCE_STOP = 0x5240cd42
+    CLIENT_RESPONSE = 0x4542a379
+    CLIENT_READY = 0x420db2d9
+    CLIENT_READY_BLOCK = 0x6bde3a73
+    CLIENT_START = 0x57d4a57c
+    DISPATCHTXN = 0x5b1dfa4f
 
     __input_type_info__ = {
         'client_get_txn_names': [],
