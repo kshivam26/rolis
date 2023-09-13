@@ -42,10 +42,22 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
                   i32* valid,
                   rrr::DeferredReply* defer) override;
 
+  void CrpcBulkDecide(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer);
+
   void BulkAccept(const MarshallDeputy& cmd,
                   i32* ballot,
                   i32* valid,
                   rrr::DeferredReply* defer) override;
+
+  void CrpcBulkAccept(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer);
 
   void BulkPrepare(const MarshallDeputy& cmd,
                   i32* ballot,
@@ -57,11 +69,23 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
                   i32* valid,
                   rrr::DeferredReply* defer) override;
 
+  void CrpcHeartbeat(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer);
+
   void BulkPrepare2(const MarshallDeputy& md_cmd,
                      i32* ballot,
                      i32* valid,
                      MarshallDeputy* ret,
                      rrr::DeferredReply* defer) override;
+
+//   void CrpcBulkPrepare2(const uint64_t& id, 
+//                     const MarshallDeputy& cmd, 
+//                     const std::vector<uint16_t>& addrChain, 
+//                     const std::vector<BulkPrepare2Result>& state, 
+//                     rrr::DeferredReply* defer) override;
 
   void SyncLog(const MarshallDeputy& md_cmd,
                      i32* ballot,

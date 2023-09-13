@@ -4,8 +4,38 @@
 #include "../constants.h"
 #include "../scheduler.h"
 #include "../paxos_worker.h"
+#include <iostream>
 
 namespace janus {
+
+// template<typename Key, typename Value>
+// class DebugMap : public std::map<Key, Value> {
+// public:
+//     using Base = std::map<Key, Value>;
+
+//     std::pair<typename Base::iterator, bool> insert(const typename Base::value_type& value) {
+//         std::cout << "Adding key: " << value.first << " to the map." << std::endl;
+//         return Base::insert(value);
+//     }
+
+//     std::pair<typename Base::iterator, bool> insert(typename Base::value_type&& value) {
+//         std::cout << "Adding key: " << value.first << " to the map." << std::endl;
+//         return Base::insert(std::move(value));
+//     }
+
+//     Value& operator[](const Key& key) {
+//         std::cout << "Accessing or adding key: " << key << " to the map." << std::endl;
+//         return Base::operator[](key);
+//     }
+
+//     Value& operator[](Key&& key) {
+//         std::cout << "Accessing or adding key: " << key << " to the map." << std::endl;
+//         return Base::operator[](std::move(key));
+//     }
+// };
+
+
+
 class Command;
 class CmdData;
 
@@ -47,9 +77,15 @@ class PaxosServer : public TxLogServer {
 
   shared_ptr<PaxosData> GetInstance(slotid_t id) {
     verify(id >= min_active_slot_);
+    // Log_info("**** the current slotid is: %d and value is going to be accessed", id);
     auto& sp_instance = logs_[id];
-    if(!sp_instance)
+    if(!sp_instance){
+      // Log_info("**** inside GetInstance; sp_instance is null");
       sp_instance = std::make_shared<PaxosData>();
+    }
+    // else{
+    //   // Log_info("**** the value of max_ballot_accepted: %d", sp_instance->max_ballot_accepted_);
+    // }
     return sp_instance;
   }
 
@@ -78,15 +114,30 @@ class PaxosServer : public TxLogServer {
                     i32* valid,
                     const function<void()> &cb);
 
+  void OnCrpcHeartbeat(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
+
   void OnBulkAccept(shared_ptr<Marshallable> &cmd,
                     i32* ballot,
                     i32 *valid,
                     const function<void()> &cb);
 
+  void OnCrpcBulkAccept(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
+
   void OnBulkCommit(shared_ptr<Marshallable> &cmd,
                     i32* ballot,
                     i32 *valid,
                     const function<void()> &cb);
+
+  void OnCrpcBulkCommit(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
 
   void OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
                       i32* ballot,

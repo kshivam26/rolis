@@ -3,6 +3,7 @@
 #include "server.h"
 #include "../paxos_worker.h"
 #include "exec.h"
+#include "commo.h"
 
 namespace janus {
 
@@ -217,6 +218,66 @@ void PaxosServer::OnHeartbeat(shared_ptr<Marshallable> &cmd,
   }
 }
 
+void PaxosServer::OnCrpcHeartbeat(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state){
+  // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp0, with state.size():%d", state.size());
+  if (addrChain.size() == 1)
+    {
+        Log_info("==== OnCrpcHeartbeat reached the final link in the chain");
+        auto x = (MultiPaxosCommo *)(this->commo_);
+        verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
+        // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 2 @ %d", gettid());
+        auto ev = x->cRPCEvents[id]; // imagine this to be a pair
+        x->cRPCEvents.erase(id);
+
+        // Log_info("==== inside demoserviceimpl::cRPC; results state is following");
+        // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);   // #profile - 0.54%
+        for (auto el : state)
+        {
+          // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 3 @ %d", gettid());
+          ev.first(el.ballot, el.valid);
+          // bool y = ((el.followerAppendOK == 1) && (this->IsLeader()) && (currentTerm == el.followerCurrentTerm));
+          ev.second->FeedResponse(el.valid);
+        }
+        
+        Log_info("==== OnCrpcHeartbeat returning from cRPC");
+        return;
+    }
+
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp1");
+    // Log_info("calling dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
+    // auto c = dynamic_pointer_cast<AppendEntriesCommand>(cmd.sp_data_);
+    // Log_info("return dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
+    BalValResult res;
+    auto r = Coroutine::CreateRun([&]()
+                                  { this->OnHeartbeat(const_cast<MarshallDeputy&>(cmd).sp_data_,
+                                                      &res.ballot,
+                                                      &res.valid,
+                                                      []() {}); }); // #profile - 2.88%
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp2, with ballot: %d, and valid: %d", res.ballot, res.valid);
+    std::vector<BalValResult> st(state);
+    // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);  // #profile - 1.23%  ==> dont think can do anything about it
+    // Log_info("returned dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_)");
+    st.push_back(res);
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp3; current size of addrChain is: %d", addrChain.size());
+    vector<uint16_t> addrChainCopy(addrChain.begin() + 1, addrChain.end());
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp4");
+    // auto addrChainCopy = addrChain;
+    // addrChainCopy.erase(addrChainCopy.begin());
+    // Log_info("inside FpgaRaftServer::OnCRPC3; calling CrpcAppendEntries3");
+    // Log_info("*** inside FpgaRaftServer::OnCRPC; cp 2 tid: %d", gettid());
+    parid_t par_id = this->frame_->site_info_->partition_id_;
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp5; par_id: %d", par_id);
+    ((MultiPaxosCommo *)(this->commo_))->CrpcHeartbeat(par_id, id,
+                                                          cmd, addrChainCopy, st);
+
+    // Log_info("**** inside PaxosServer::OnCrpcHeartbeat cp6");
+                                                                                              // Log_info("==== returning from void FpgaRaftServer::OnCRPC");
+    // Log_info("*** inside FpgaRaftServer::OnCRPC; cp 3 tid: %d", gettid());
+}
+
 void PaxosServer::OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
                                i32* ballot,
                                i32* valid,
@@ -270,7 +331,7 @@ void PaxosServer::OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
     es->state_unlock();
   } else{
     mtx_.unlock();
-    if(req_leader != es->leader_id){
+    if(req_leader != es->leader_id){ // kshivam: triggered in one of the crpc runs, how?
       Log_info("Req leader is %d and prev leader is %d", req_leader, es->leader_id);
       verify(0); //more than one leader in a term, should not send prepare if not leader.
     }
@@ -366,6 +427,8 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
   int req_leader = bcmd->leader_id;
   if(req_leader == 1 && es->machine_id != 1)
         Log_debug("Accept Received from new leader");
+
+  // Log_info("**** OnBulkAccept; current epoch is: %d", cur_epoch);
   //Log_debug("multi-paxos scheduler accept for slot: %lx", bcmd->slots.size());
   //es->state_lock();
   mtx_.lock();
@@ -389,6 +452,7 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
   for(int i = 0; i < bcmd->slots.size(); i++){
       slotid_t slot_id = bcmd->slots[i];
       ballot_t ballot_id = bcmd->ballots[i];
+      // Log_info("**** OnBulkAccept; ballot_id:%d", ballot_id);
       mtx_.lock();
       if(cur_epoch > ballot_id){
         *valid = 0;
@@ -428,6 +492,80 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
   //es->state_unlock();
   cb();
   //Log_info("multi-paxos scheduler accept for slot: %ld, par_id: %d", cur_slot, partition_id_);
+}
+
+
+void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state){
+  // Log_info("**** inside PaxosServer::CrpcBulkAccept cp0, with state.size():%d", state.size());  
+  if (addrChain.size() == 1)
+    {
+        Log_info("**** CrpcBulkAccept reached the final link in the chain");
+        auto x = (MultiPaxosCommo *)(this->commo_);
+        verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
+        // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 2 @ %d", gettid());
+        auto ev = x->cRPCEvents[id]; // imagine this to be a pair
+        x->cRPCEvents.erase(id);
+        // Log_info("**** inside the last link in the chain; res.ballot:%d, res.valid:%d", res.ballot, res.valid);
+        // Log_info("==== inside demoserviceimpl::cRPC; results state is following");
+        // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);   // #profile - 0.54%
+        for (auto el : state)
+        {
+          // Log_info("**** inside the last link in the chain; el.ballot:%d, el.valid:%d", el.ballot, el.valid);
+          // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 3 @ %d", gettid());
+          ev.first(el.ballot, el.valid);
+          // bool y = ((el.followerAppendOK == 1) && (this->IsLeader()) && (currentTerm == el.followerCurrentTerm));
+          ev.second->FeedResponse(el.valid);
+        }
+        
+        // Log_info("**** CrpcBulkAccept returning from cRPC");
+        return;
+    }
+    BalValResult res;
+    auto r = Coroutine::CreateRun([&]()
+                                  { this->OnBulkAccept(const_cast<MarshallDeputy&>(cmd).sp_data_,
+                                                      &res.ballot,
+                                                      &res.valid,
+                                                      []() {}); }); // #profile - 2.88%
+    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp1");
+    // Log_info("calling dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
+    // auto c = dynamic_pointer_cast<AppendEntriesCommand>(cmd.sp_data_);
+    // Log_info("return dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
+    // BalValResult res;
+    // auto r = Coroutine::CreateRun([&]()
+    //                               { this->OnBulkAccept(const_cast<MarshallDeputy&>(cmd).sp_data_,
+    //                                                   &res.ballot,
+    //                                                   &res.valid,
+    //                                                   []() {}); }); // #profile - 2.88%
+    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp2, with ballot: %d, and valid: %d", res.ballot, res.valid);
+    std::vector<BalValResult> st(state);
+    // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);  // #profile - 1.23%  ==> dont think can do anything about it
+    // Log_info("returned dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_)");
+    st.push_back(res);
+    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp3; current size of addrChain is: %d", addrChain.size());
+    vector<uint16_t> addrChainCopy(addrChain.begin() + 1, addrChain.end());
+    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp4");
+
+    parid_t par_id = this->frame_->site_info_->partition_id_;
+    // kshivam todo: maybe remove this optimization; adding an optimization to not 
+    // send the cmd data over the network to save b/w
+    // if (false){
+    if (addrChainCopy.size() == 1){
+      auto sp_cmd = make_shared<LogEntry>();
+      // auto sp_m = dynamic_pointer_cast<Marshallable>(sp_cmd);
+      Log_info("***** checkpoint check check check");
+      MarshallDeputy ph(sp_cmd);
+      ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, id,
+                                                          ph, addrChainCopy, st);
+    }
+    else{
+    Log_info("**** inside PaxosServer::CrpcBulkAccept cp5; par_id: %d", par_id);
+    ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, id,
+                                                          cmd, addrChainCopy, st);
+    }
+    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp6");
 }
 
 void PaxosServer::OnSyncCommit(shared_ptr<Marshallable> &cmd,
@@ -554,6 +692,8 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   int req_leader = bcmd->leader_id;
   //es->state_lock();
   mtx_.lock();
+
+  // Log_info("**** OnBulkCommit; current epoch is: %d", cur_epoch);
   if(cur_b < cur_epoch){
     *ballot = cur_epoch;
     //es->state_unlock();
@@ -576,6 +716,7 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
       //break;
       slotid_t slot_id = bcmd->slots[i];
       ballot_t ballot_id = bcmd->ballots[i];
+      // Log_info("**** OnBulkCommit; ballot_id:%d", ballot_id);
       mtx_.lock();
       if(cur_epoch > ballot_id){
         *valid = 0;
@@ -600,6 +741,7 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
         es->state_unlock();
         
         auto instance = GetInstance(slot_id);
+        // Log_info("**** OnBulkCommit; slot_id: %d, max_ballot_accepted: %d", slot_id, instance->max_ballot_accepted_);
         verify(instance->max_ballot_accepted_ == ballot_id); //todo: for correctness, if a new commit comes, sync accept.
         instance->max_ballot_seen_ = ballot_id;
         instance->max_ballot_accepted_ = ballot_id;
@@ -651,7 +793,62 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   //FreeSlots();
   //mtx_.unlock();
   cb();
+
+  // Log_info("**** OnBulkCommit; ballot:%d, and valid: %d", *ballot, *valid);
 }
+
+void PaxosServer::OnCrpcBulkCommit(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state){
+  // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp0, with state.size():%d", state.size());
+  BalValResult res;
+  auto r = Coroutine::CreateRun([&]()
+                                  { this->OnBulkCommit(const_cast<MarshallDeputy&>(cmd).sp_data_,
+                                                      &res.ballot,
+                                                      &res.valid,
+                                                      []() {}); }); // #profile - 2.88%
+  // Log_info("**** OnCrpcBulkCommit; res.ballot:%d, res.valid:%d", res.ballot, res.valid);
+  if (addrChain.size() == 1)
+    {
+        // Log_info("**** OnCrpcBulkCommit reached the final link in the chain");
+        auto x = (MultiPaxosCommo *)(this->commo_);
+        verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
+        // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 2 @ %d", gettid());
+        auto ev = x->cRPCEvents[id]; // imagine this to be a pair
+        x->cRPCEvents.erase(id);
+        
+        ev.first(res.ballot, res.valid);
+        ev.second->FeedResponse(res.valid);
+        // Log_info("==== inside demoserviceimpl::cRPC; results state is following");
+        // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);   // #profile - 0.54%
+        for (auto el : state)
+        {
+          // Log_info("**** inside the last link in the chain OnCrpcBulkCommit; el.ballot:%d, el.valid:%d", el.ballot, el.valid);
+          // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 3 @ %d", gettid());
+          ev.first(el.ballot, el.valid);
+          // bool y = ((el.followerAppendOK == 1) && (this->IsLeader()) && (currentTerm == el.followerCurrentTerm));
+          ev.second->FeedResponse(el.valid);
+        }
+        
+        // Log_info("**** OnCrpcBulkCommit returning from cRPC");
+        return;
+    }
+    // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp2, with ballot: %d, and valid: %d", res.ballot, res.valid);
+    std::vector<BalValResult> st(state);
+    st.push_back(res);
+    // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp3; current size of addrChain is: %d", addrChain.size());
+    vector<uint16_t> addrChainCopy(addrChain.begin() + 1, addrChain.end());
+    // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp4");
+
+    parid_t par_id = this->frame_->site_info_->partition_id_;
+    // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp5; par_id: %d", par_id);
+    ((MultiPaxosCommo *)(this->commo_))->CrpcBulkDecide(par_id, id,
+                                                          cmd, addrChainCopy, st);
+
+    // Log_info("**** inside PaxosServer::OnCrpcBulkCommit cp6");
+}
+
 
 void PaxosServer::OnSyncNoOps(shared_ptr<Marshallable> &cmd,
                                i32* ballot,

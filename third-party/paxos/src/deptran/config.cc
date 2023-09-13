@@ -69,7 +69,7 @@ int Config::CreateConfig(int argc, char **argv) {
   int32_t tot_req_num           = 10000;
   int16_t n_concurrent          = 1;
   bulkBatchCount = 10000;
-
+  uint32_t is_crpc_enabled = 0;
   int c;
   optind = 1;
   string filename;
@@ -134,6 +134,13 @@ int Config::CreateConfig(int argc, char **argv) {
         // TODO remove
         ctrl_port = strtoul(optarg, &end_ptr, 10);
         if ((end_ptr == NULL) || (*end_ptr != '\0')) return -4;
+        break;
+      case 'q':  // for crpc version; 0 for no_crpc, 1 for chained rpc
+        // kshivam remove
+        is_crpc_enabled = strtoul(optarg, &end_ptr, 10);
+        Log_info("the cRPC version is: %d", is_crpc_enabled);
+        if ((end_ptr == NULL) || (*end_ptr != '\0'))
+          return -4;
         break;
       case 's': // site id
         // TODO remove
@@ -213,6 +220,7 @@ int Config::CreateConfig(int argc, char **argv) {
   config_s->proc_name_ = proc_name;
   config_s->config_paths_ = config_paths;
   config_s->Load();
+  config_s->is_crpc_enabled_ = is_crpc_enabled;
   return SUCCESS;
 }
 
@@ -979,6 +987,10 @@ bool Config::retry_wait() {
 
 int32_t Config::get_tot_req() {
   return tot_req_num_;
+}
+
+uint32_t Config::isCrpcEnabled() {
+  return is_crpc_enabled_;
 }
 
 }

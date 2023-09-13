@@ -67,6 +67,7 @@ class Config {
   int32_t rotate_{3};
   int32_t n_parallel_dispatch_{0};
   bool forwarding_enabled_ = false;
+  int32_t is_crpc_enabled_ = 0;
   int timestamp_{TimestampType::CLOCK};
 
   // TODO remove, will cause problems.
@@ -231,7 +232,7 @@ class Config {
   bool do_logging();
   bool IsReplicated();
   int32_t get_tot_req();
-
+  uint32_t isCrpcEnabled();
   const char *log_path();
 
   bool retry_wait();

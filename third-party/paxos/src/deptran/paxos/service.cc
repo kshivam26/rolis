@@ -83,6 +83,23 @@ void MultiPaxosServiceImpl::Heartbeat(const MarshallDeputy& md_cmd,
   });
 }
 
+// kshivam-TODO: add the code
+void MultiPaxosServiceImpl::CrpcHeartbeat(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer){
+  // Log_info("**** inside MultiPaxosServiceImpl::CrpcHeartbeat");
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnCrpcHeartbeat(id,
+                            cmd,
+                            addrChain,
+                            state);
+    defer->reply();
+  });
+}
+
 void MultiPaxosServiceImpl::BulkPrepare2(const MarshallDeputy& md_cmd,
                                        i32* ballot,
                                        i32* valid,
@@ -101,16 +118,41 @@ void MultiPaxosServiceImpl::BulkPrepare2(const MarshallDeputy& md_cmd,
   });
 }
 
+// kshivam-TODO: add the code
+// void CrpcBulkPrepare2(const uint64_t& id, 
+//                     const MarshallDeputy& cmd, 
+//                     const std::vector<uint16_t>& addrChain, 
+//                     const std::vector<BulkPrepare2Result>& state, 
+//                     rrr::DeferredReply* defer) {}
+
 void MultiPaxosServiceImpl::BulkAccept(const MarshallDeputy& md_cmd,
                                        i32* ballot,
                                        i32* valid,
                                        rrr::DeferredReply* defer) {
+  // Log_info("inside service::BulkAccept");
   verify(sched_ != nullptr);
   Coroutine::CreateRun([&] () {
     sched_->OnBulkAccept(const_cast<MarshallDeputy&>(md_cmd).sp_data_,
                          ballot,
                          valid,
                         std::bind(&rrr::DeferredReply::reply, defer));
+  });
+}
+
+// kshivam-TODO: add the code
+void MultiPaxosServiceImpl::CrpcBulkAccept(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer){
+  Log_info("**** inside MultiPaxosServiceImpl::CrpcBulkAccept");
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnCrpcBulkAccept(id,
+                            cmd,
+                            addrChain,
+                            state);
+    defer->reply();
   });
 }
 
@@ -125,6 +167,23 @@ void MultiPaxosServiceImpl::BulkDecide(const MarshallDeputy& md_cmd,
                          valid,
                          std::bind(&rrr::DeferredReply::reply, defer));
     //defer->reply();
+  });
+}
+
+// kshivam-TODO: add the code
+void MultiPaxosServiceImpl::CrpcBulkDecide(const uint64_t& id, 
+                    const MarshallDeputy& cmd, 
+                    const std::vector<uint16_t>& addrChain, 
+                    const std::vector<BalValResult>& state, 
+                    rrr::DeferredReply* defer){
+  // Log_info("**** inside MultiPaxosServiceImpl::CrpcBulkDecide");
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnCrpcBulkCommit(id,
+                            cmd,
+                            addrChain,
+                            state);
+    defer->reply();
   });
 }
 

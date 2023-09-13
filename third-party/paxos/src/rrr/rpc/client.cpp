@@ -169,6 +169,7 @@ int Client::connect(const char* addr) {
 #endif
   verify(set_nonblocking(sock_, true) == 0);
   Log_debug("rrr::Client: connected to %s", addr);
+  Log_info("rrr::Client: connected to %s", addr);
 
   status_ = CONNECTED;
   pollmgr_->add(this);
