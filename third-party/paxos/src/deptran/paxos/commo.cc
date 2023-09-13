@@ -385,7 +385,8 @@ MultiPaxosCommo::BroadcastBulkAccept(parid_t par_id,
   static bool hasPrinted = false;  // Static variable to track if it has printed
 
   if (!hasPrinted) {
-      Log_info("in no cRPC; tid of leader is %d", gettid());
+      Log_info("in no cRPC;");
+      // Log_info("in no cRPC; tid of leader is %d", gettid());
       hasPrinted = true;  // Update the static variable
   }
   int n = Config::GetConfig()->GetPartitionSize(par_id);
@@ -426,7 +427,7 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
   static bool hasPrinted = false;  // Static variable to track if it has printed
 
   if (!hasPrinted) {
-      Log_info("in cRPC; tid of leader is %d", gettid());
+      Log_info("in cRPC");
       hasPrinted = true;  // Update the static variable
   }
   int n = Config::GetConfig()->GetPartitionSize(par_id);
