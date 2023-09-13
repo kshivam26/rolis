@@ -200,21 +200,21 @@ inline rrr::Marshal& operator >>(rrr::Marshal& m, BulkPrepare2Result& o) {
 class MultiPaxosService: public rrr::Service {
 public:
     enum {
-        FORWARD = 0x6584e1f8,
-        PREPARE = 0x46f753d1,
-        ACCEPT = 0x5bd81b61,
-        DECIDE = 0x3e76579b,
-        HEARTBEAT = 0x16c2a902,
-        CRPCHEARTBEAT = 0x1b345efd,
-        BULKPREPARE = 0x40f7fc10,
-        BULKACCEPT = 0x3ab41538,
-        CRPCBULKACCEPT = 0x13fbedd2,
-        BULKPREPARE2 = 0x21f17702,
-        SYNCLOG = 0x1387e08f,
-        SYNCCOMMIT = 0x5e363c40,
-        SYNCNOOPS = 0x34d864ed,
-        BULKDECIDE = 0x427facc8,
-        CRPCBULKDECIDE = 0x6ce9434e,
+        FORWARD = 0x6899a058,
+        PREPARE = 0x1767b216,
+        ACCEPT = 0x2c1d7afa,
+        DECIDE = 0x1e0e657e,
+        HEARTBEAT = 0x4231796c,
+        CRPCHEARTBEAT = 0x178921b4,
+        BULKPREPARE = 0x18f338b5,
+        BULKACCEPT = 0x23bf9dbb,
+        CRPCBULKACCEPT = 0x158697b6,
+        BULKPREPARE2 = 0x1872ea60,
+        SYNCLOG = 0x4905a414,
+        SYNCCOMMIT = 0x64cb4583,
+        SYNCNOOPS = 0x6da52b8c,
+        BULKDECIDE = 0x2be7092d,
+        CRPCBULKDECIDE = 0x4a8c4277,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -737,18 +737,14 @@ public:
         return __ret__;
     }
     rrr::Future* async_CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
-        Log_info("**** inside async_CrpcBulkAccept");
         rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCBULKACCEPT, __fu_attr__);
         if (__fu__ != nullptr) {
             *__cl__ << id;
-            // Log_info("inside async_CrpcBulkAccept2");
             *__cl__ << cmd;
-            Log_info("**** inside async_CrpcBulkAccept3");
             *__cl__ << addrChain;
             *__cl__ << state;
         }
         __cl__->end_request();
-        Log_info("**** returning async_CrpcBulkAccept");
         return __fu__;
     }
     rrr::i32 CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state) {
@@ -892,34 +888,34 @@ public:
 class ClassicService: public rrr::Service {
 public:
     enum {
-        MSGSTRING = 0x322dbc03,
-        MSGMARSHALL = 0x58dd0cdf,
-        DISPATCH = 0x3a871f0b,
-        PREPARE = 0x3c166c14,
-        COMMIT = 0x35bc634b,
-        ABORT = 0x10e6ee63,
-        UPGRADEEPOCH = 0x2fb13918,
-        TRUNCATEEPOCH = 0x6e757792,
-        RPC_NULL = 0x34ac4a83,
-        TAPIRACCEPT = 0x12fc5a7f,
-        TAPIRFASTACCEPT = 0x2d100b66,
-        TAPIRDECIDE = 0x1914c412,
-        RCCDISPATCH = 0x5dcb3dfd,
-        RCCFINISH = 0x54b09f2c,
-        RCCINQUIRE = 0x12e6bbd9,
-        RCCDISPATCHRO = 0x1fa74a96,
-        RCCINQUIREVALIDATION = 0x55585835,
-        RCCNOTIFYGLOBALVALIDATION = 0x5cf91fd7,
-        JANUSDISPATCH = 0x2148d900,
-        JANUSCOMMIT = 0x44b658cc,
-        JANUSCOMMITWOGRAPH = 0x2a959a79,
-        JANUSINQUIRE = 0x42cf3527,
-        JANUSPREACCEPT = 0x1bbcc7d2,
-        JANUSPREACCEPTWOGRAPH = 0x6ac35ff2,
-        JANUSACCEPT = 0x5606c518,
-        PREACCEPTFEBRUUS = 0x4aab2ede,
-        ACCEPTFEBRUUS = 0x21c16143,
-        COMMITFEBRUUS = 0x3b79ebb2,
+        MSGSTRING = 0x5d2dd4b8,
+        MSGMARSHALL = 0x68b5e4e8,
+        DISPATCH = 0x65ff3966,
+        PREPARE = 0x2fe2fbb4,
+        COMMIT = 0x3d5fb3d5,
+        ABORT = 0x358ee602,
+        UPGRADEEPOCH = 0x39a805ab,
+        TRUNCATEEPOCH = 0x30dfd4fd,
+        RPC_NULL = 0x64c0768e,
+        TAPIRACCEPT = 0x36fd9659,
+        TAPIRFASTACCEPT = 0x5275006d,
+        TAPIRDECIDE = 0x5e1c4d73,
+        RCCDISPATCH = 0x3d8baf15,
+        RCCFINISH = 0x5a969094,
+        RCCINQUIRE = 0x3151435b,
+        RCCDISPATCHRO = 0x11577370,
+        RCCINQUIREVALIDATION = 0x38f006a0,
+        RCCNOTIFYGLOBALVALIDATION = 0x3f527ded,
+        JANUSDISPATCH = 0x58af5da5,
+        JANUSCOMMIT = 0x2058c395,
+        JANUSCOMMITWOGRAPH = 0x3040eab2,
+        JANUSINQUIRE = 0x45302452,
+        JANUSPREACCEPT = 0x4bbdbb15,
+        JANUSPREACCEPTWOGRAPH = 0x3b571956,
+        JANUSACCEPT = 0x45fe65df,
+        PREACCEPTFEBRUUS = 0x6a5ef33f,
+        ACCEPTFEBRUUS = 0x6da982c2,
+        COMMITFEBRUUS = 0x2bda1296,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -2138,10 +2134,10 @@ public:
 class ServerControlService: public rrr::Service {
 public:
     enum {
-        SERVER_SHUTDOWN = 0x5c91834a,
-        SERVER_READY = 0x228a578f,
-        SERVER_HEART_BEAT_WITH_DATA = 0x28f068ea,
-        SERVER_HEART_BEAT = 0x322d8c91,
+        SERVER_SHUTDOWN = 0x1c59995b,
+        SERVER_READY = 0x6e82f06a,
+        SERVER_HEART_BEAT_WITH_DATA = 0x25a4205a,
+        SERVER_HEART_BEAT = 0x3e963809,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -2284,14 +2280,14 @@ public:
 class ClientControlService: public rrr::Service {
 public:
     enum {
-        CLIENT_GET_TXN_NAMES = 0x2d6012de,
-        CLIENT_SHUTDOWN = 0x27254b6f,
-        CLIENT_FORCE_STOP = 0x5240cd42,
-        CLIENT_RESPONSE = 0x4542a379,
-        CLIENT_READY = 0x420db2d9,
-        CLIENT_READY_BLOCK = 0x6bde3a73,
-        CLIENT_START = 0x57d4a57c,
-        DISPATCHTXN = 0x5b1dfa4f,
+        CLIENT_GET_TXN_NAMES = 0x445cb3b9,
+        CLIENT_SHUTDOWN = 0x576411ec,
+        CLIENT_FORCE_STOP = 0x507746aa,
+        CLIENT_RESPONSE = 0x2aba549d,
+        CLIENT_READY = 0x604f320a,
+        CLIENT_READY_BLOCK = 0x1b75d41d,
+        CLIENT_START = 0x479463e5,
+        DISPATCHTXN = 0x14ab3ceb,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
