@@ -866,7 +866,7 @@ main(int argc, char **argv) {
     }
 
     if (!leader_config && multi_process) {
-        while (!(count == nthreads && end_recv)) {
+        while (!(count > 0 && end_recv)) { // kshivam
             sleep(1);
             printf("follower is waiting for being ended: %d/%zu\n", count.load(), nthreads);
         }
