@@ -712,6 +712,9 @@ int setup2(int action){  // action == 0 is default, action == 1 is forced to be 
     server_launch_worker(server_infos);
   }
   if(action == 0 && es->machine_id == 0){
+    // kshivam
+    Log_info("**** inside setup2, calling sleep on leader");
+    sleep(1);
     es->set_state(1);
     es->set_epoch(2);
     es->set_leader(0);
