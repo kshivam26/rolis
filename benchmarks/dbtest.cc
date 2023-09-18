@@ -871,7 +871,7 @@ main(int argc, char **argv) {
             sleep(1);
             printf("follower is waiting for being ended: %d/%zu\n", count.load(), nthreads);
         }
-        sleep(1); // kshivam
+        // sleep(1); // kshivam
         /*
         int latency_readyQueue = 0 ;
         for (auto it: readyQueueTracker) {
