@@ -778,6 +778,7 @@ public:
 
   void set_lastseen(){
     lastseen = std::chrono::high_resolution_clock::now();
+    Log_info("**** called set_lastseen()");
   }
 
   void set_bulkprep_time(){
