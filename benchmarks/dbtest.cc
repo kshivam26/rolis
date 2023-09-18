@@ -556,6 +556,7 @@ main(int argc, char **argv) {
 
       if(len == 0){
         std::cout << "par_id " << par_id << " is ended..." << std::endl;
+        std::cout << "****end_recv is being set to true" << std::endl;
         end_recv = true;
         count ++;
         local_end_recv = true ;
