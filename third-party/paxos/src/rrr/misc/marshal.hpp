@@ -13,7 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <memory>
-
+#include <errno.h>
 #include "base/all.hpp"
 
 
@@ -352,6 +352,9 @@ class Marshal: public NoCopy {
       if (write_idx < data->size) {
         cnt = ::read(fd, data->ptr + write_idx, bytes);
 
+      if(cnt == -1){
+        Log_info("there seems to be some error while reading %s", strerror(errno));
+      }
 #ifdef RPC_STATISTICS
         stat_marshal_in(fd, data->ptr + write_idx, bytes, cnt);
 #endif // RPC_STATISTICS
@@ -363,6 +366,7 @@ class Marshal: public NoCopy {
 
       assert(write_idx <= data->size);
       assert(read_idx <= write_idx);
+      // Log_info("value being returned is %d", cnt);
       return cnt;
     }
 

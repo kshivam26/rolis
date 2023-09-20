@@ -15,6 +15,8 @@
 #include <queue>
 #include <mutex>
 
+#include<chrono> 
+#include<thread>
 
 std::mutex paxos_lock{};
 
@@ -686,13 +688,15 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
           // for single Paxos stream enqueuing
           int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
           while (1) {
-              if (outstanding >= 200||(outstanding <200 && outstanding>10)) {
-                  outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
-                  continue;
+              if (outstanding >= 200) {
+                // std::cout << "*************** lot of outstanding requests:" << outstanding << std::endl;
+                // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                outstanding = get_outstanding_logs(TThread::getPartitionID ());    
+                continue;
               }
 
-              if (outstanding <= 10) {
-                  outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
+              if (outstanding < 200) {
+                  outstanding = get_outstanding_logs(TThread::getPartitionID ());
                   break;
               }
           }

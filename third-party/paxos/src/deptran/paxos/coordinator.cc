@@ -337,7 +337,7 @@ void BulkCoordinatorMultiPaxos::Accept() {
 
     shared_ptr<PaxosAcceptQuorumEvent> sp_quorum = nullptr;
 
-    Log_info("****wait started##################");
+    Log_info("****wait started for pard_id: %d", par_id_);
     if (false){
     // if (!Config::GetConfig()->isCrpcEnabled()){
       // Log_info("is_crpc_enabled is false; calling BroadcastBulkAccept");
@@ -383,7 +383,7 @@ void BulkCoordinatorMultiPaxos::Accept() {
     // }, frame_->site_info_->id);
     
     sp_quorum->Wait();
-    Log_info("****wait over##################");
+    Log_info("****wait over for pard_id: %d", par_id_);
     if (sp_quorum->Yes()) {
 	      if(ess_cc->machine_id == 0){
           Log_debug("Accept: slot %d  is committed, parition id %d", cmd_temp1->slots[0], frame_->site_info_->partition_id_);

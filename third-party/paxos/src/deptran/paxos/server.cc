@@ -499,10 +499,12 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
                   const MarshallDeputy& cmd, 
                   const std::vector<uint16_t>& addrChain, 
                   const std::vector<BalValResult>& state){
-  // Log_info("**** inside PaxosServer::CrpcBulkAccept cp0, with state.size():%d", state.size());  
+  // Log_info("**** inside PaxosServer::CrpcBulkAccept cp0, with state.size():%d", state.size());
+  Log_info("inside paxosServer::OnCrpcBulkAccept, with crpc_id: %ld", id);  
   if (addrChain.size() == 1)
     {
-        Log_info("**** CrpcBulkAccept reached the final link in the chain");
+        Log_info("inside paxosServer::OnCrpcBulkAccept, inside chain , with crpc_id: %ld", id);  
+        Log_info("**** CrpcBulkAccept reached the final link in the chain with par_id: %d", this->frame_->site_info_->partition_id_);
         auto x = (MultiPaxosCommo *)(this->commo_);
         verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
         // Log_info("inside FpgaRaftServer::OnCRPC2; checkpoint 2 @ %d", gettid());
@@ -524,11 +526,13 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
         return;
     }
     BalValResult res;
+    Log_info("***** calling onBulkAccept, with crpc_id: %ld", id);
     auto r = Coroutine::CreateRun([&]()
                                   { this->OnBulkAccept(const_cast<MarshallDeputy&>(cmd).sp_data_,
                                                       &res.ballot,
                                                       &res.valid,
                                                       []() {}); }); // #profile - 2.88%
+    Log_info("***** returned from calling onBulkAccept, with crpc_id: %ld", id);
     // Log_info("**** inside PaxosServer::CrpcBulkAccept cp1");
     // Log_info("calling dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
     // auto c = dynamic_pointer_cast<AppendEntriesCommand>(cmd.sp_data_);
@@ -555,17 +559,20 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
     if (addrChainCopy.size() == 1){
       auto sp_cmd = make_shared<LogEntry>();
       // auto sp_m = dynamic_pointer_cast<Marshallable>(sp_cmd);
-      Log_info("***** checkpoint check check check");
+      Log_info("***** checkpoint check check check with crpc_id: %ld", id);
       MarshallDeputy ph(sp_cmd);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, id,
                                                           ph, addrChainCopy, st);
     }
     else{
     Log_info("**** inside PaxosServer::CrpcBulkAccept cp5; par_id: %d", par_id);
+    if (!this->commo_){
+      Log_info("***** commo is not initialized with crpc_id: %ld", id);
+    }
     ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, id,
                                                           cmd, addrChainCopy, st);
     }
-    // Log_info("**** inside PaxosServer::CrpcBulkAccept cp6");
+    Log_info("**** inside PaxosServer::CrpcBulkAccept cp6 with crpc_id: %ld", id);
 }
 
 void PaxosServer::OnSyncCommit(shared_ptr<Marshallable> &cmd,
@@ -783,7 +790,7 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   //Log_info("Committing %d", commit_exec.size());
   for(int i = 0; i < commit_exec.size(); i++){
       //auto x = new PaxosData();
-      app_next_(*commit_exec[i]->committed_cmd_);
+      app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
   }
 
   *valid = 1;
