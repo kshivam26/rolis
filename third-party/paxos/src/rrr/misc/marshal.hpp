@@ -353,9 +353,9 @@ class Marshal: public NoCopy {
         cnt = ::read(fd, data->ptr + write_idx, bytes);
 
       // kshivam, uncomment later
-      // if(cnt == -1){
-      //   Log_info("there seems to be some error while reading %s", strerror(errno));
-      // }
+      if(cnt == -1){
+        Log_info("there seems to be some error while reading %s", strerror(errno));
+      }
 #ifdef RPC_STATISTICS
         stat_marshal_in(fd, data->ptr + write_idx, bytes, cnt);
 #endif // RPC_STATISTICS

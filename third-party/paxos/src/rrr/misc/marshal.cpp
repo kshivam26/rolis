@@ -320,14 +320,22 @@ size_t Marshal::chnk_read_from_fd(int fd, size_t bytes){
     read_bytes += head_->read_from_fd(fd, bytes);
     content_size_ += read_bytes;
     // kshivam
-    if (INT32_MAX - write_cnt_ < read_bytes){
-            Log_info("alarm alarm alarm 4");
-            Log_info("********* write_cnt_: %d", write_cnt_);
-            std::cout << "******* value of bytes" << bytes << std::endl;
-            std::cout << "******* read bytes" << read_bytes << std::endl;
-            Log_info("********* read_bytes: %ld", read_bytes);
-        }
+    // if (INT32_MAX - write_cnt_ < read_bytes){
+    //         Log_info("alarm alarm alarm 4");
+    //         Log_info("********* write_cnt_: %d", write_cnt_);
+    //         std::cout << "******* value of bytes" << bytes << std::endl;
+    //         std::cout << "******* read bytes" << read_bytes << std::endl;
+    //         Log_info("********* read_bytes: %ld", read_bytes);
+    //     }
+    if (read_bytes == -1){
+        Log_info("alarm alarm alarm 4");
+        Log_info("********* write_cnt_ before: %d", write_cnt_);
+    }
     write_cnt_ += read_bytes;
+    if (read_bytes == -1){
+        Log_info("alarm alarm alarm 4");
+        Log_info("********* write_cnt_ after: %d", write_cnt_);
+    }
     // Log_info("********* write_cnt_: %d", write_cnt_); // kshivam marker, uncomment
     if(read_bytes <= 0){
         std::cout<< "read_bytes read is less than equal to zero?" << std::endl;
