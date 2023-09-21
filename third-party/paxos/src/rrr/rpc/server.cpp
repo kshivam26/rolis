@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <netinet/tcp.h>
-
+#include <arpa/inet.h>
 #include "reactor/coroutine.h"
 #include "server.hpp"
 #include "utils.hpp"
@@ -405,6 +405,7 @@ void Server::server_loop(struct addrinfo* svr_addr) {
       int clnt_socket = accept(server_sock_, svr_addr->ai_addr, &svr_addr->ai_addrlen);
 #endif
         if (clnt_socket >= 0 && status_ == RUNNING) {
+            // Log_info("*alarm4 fd: %d, and client_ip %s\n", svr_addr->ai_addr->sa_data);
             Log_debug("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
             verify(set_nonblocking(clnt_socket, true) == 0);
             int buf_len = 1024 * 1024; // 1M buffer
@@ -437,7 +438,19 @@ void ServerListener::handle_read() {
     int clnt_socket = ::accept(server_sock_, p_svr_addr_->ai_addr, &p_svr_addr_->ai_addrlen);
 #endif
     if (clnt_socket >= 0) {
-      Log_debug("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
+
+      char client_ip[INET_ADDRSTRLEN];
+    
+    if (p_svr_addr_->ai_addr->sa_family == AF_INET) { // IPv4
+        struct sockaddr_in *client_sockaddr = (struct sockaddr_in *)p_svr_addr_->ai_addr;
+        if (inet_ntop(AF_INET, &(client_sockaddr->sin_addr), client_ip, INET_ADDRSTRLEN) == NULL) {
+            verify(0);
+        }
+    }
+
+    // printf("Connection accepted from IP address: %s\n", client_ip);
+      Log_info("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
+      Log_info("*alarm4 fd: %d, and client_ip %s\n", clnt_socket, client_ip);
       verify(set_nonblocking(clnt_socket, true) == 0);
 
       ServerConnection* sconn = new ServerConnection(server_, clnt_socket);
