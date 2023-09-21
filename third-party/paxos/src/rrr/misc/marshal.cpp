@@ -331,7 +331,12 @@ size_t Marshal::chnk_read_from_fd(int fd, size_t bytes){
         Log_info("alarm alarm alarm 4");
         Log_info("********* write_cnt_ before: %d with fd: %d", write_cnt_, fd);
     }
-    write_cnt_ += read_bytes;
+    
+    // kshivam // delete the following check later, included because doesn't make sense to add -1 to an integer
+    if (read_bytes != -1){
+        write_cnt_ += read_bytes;
+    }
+    
     if (read_bytes == -1){
         Log_info("alarm alarm alarm 4");
         Log_info("********* write_cnt_ after: %d with fd: %d", write_cnt_, fd);
