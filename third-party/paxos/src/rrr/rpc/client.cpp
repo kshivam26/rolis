@@ -263,6 +263,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   out_l_.lock();
 
   if (status_ != CONNECTED) {
+    Log_info("**** inside begin_request; looks like the client has gotten disconnected0 :(");
     return nullptr;
   }
 
@@ -273,6 +274,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   //Log_info("Starting a new request with rpc_id %ld", rpc_id); 
   // check if the client gets closed in the meantime
   if (status_ != CONNECTED) {
+    Log_info("**** inside begin_request; looks like the client has gotten disconnected :(");
     pending_fu_l_.lock();
     unordered_map<i64, Future*>::iterator it = pending_fu_.find(fu->xid_);
     if (it != pending_fu_.end()) {
@@ -297,7 +299,7 @@ void Client::end_request() {
   // set reply size in packet
   if (bmark_ != nullptr) {
     i32 request_size = out_.get_and_reset_write_cnt();
-    //Log_info("client request size is %d", request_size);
+    // Log_info("client request size is %d", request_size);
     out_.write_bookmark(bmark_, &request_size);
     delete bmark_;
     bmark_ = nullptr;
