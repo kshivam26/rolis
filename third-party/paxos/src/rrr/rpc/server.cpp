@@ -527,7 +527,7 @@ ServerListener::ServerListener(Server* server, string addr) {
   verify(listen(server_sock_, backlog) == 0);
   verify(set_nonblocking(server_sock_, true) == 0);
   set_nonblocking(server_sock_, true);
-  Log_info("rrr::Server: started on %s", addr.c_str());
+  Log_info("rrr::Server: started on %s with fd:%d", addr.c_str(), fd());
 }
 
 int Server::start(const char* bind_addr) {

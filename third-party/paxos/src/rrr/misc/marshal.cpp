@@ -329,12 +329,12 @@ size_t Marshal::chnk_read_from_fd(int fd, size_t bytes){
     //     }
     if (read_bytes == -1){
         Log_info("alarm alarm alarm 4");
-        Log_info("********* write_cnt_ before: %d", write_cnt_);
+        Log_info("********* write_cnt_ before: %d with fd: %d", write_cnt_, fd);
     }
     write_cnt_ += read_bytes;
     if (read_bytes == -1){
         Log_info("alarm alarm alarm 4");
-        Log_info("********* write_cnt_ after: %d", write_cnt_);
+        Log_info("********* write_cnt_ after: %d with fd: %d", write_cnt_, fd);
     }
     // Log_info("********* write_cnt_: %d", write_cnt_); // kshivam marker, uncomment
     if(read_bytes <= 0){
