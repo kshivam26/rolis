@@ -145,7 +145,7 @@ void MultiPaxosServiceImpl::CrpcBulkAccept(const uint64_t& id,
                     const std::vector<uint16_t>& addrChain, 
                     const std::vector<BalValResult>& state, 
                     rrr::DeferredReply* defer){
-  Log_info("**** inside MultiPaxosServiceImpl::CrpcBulkAccept with crpc_id: %ld", id);
+  // Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept with crpc_id: %ld", id);
   verify(sched_ != nullptr);
   Coroutine::CreateRun([&] () {
     sched_->OnCrpcBulkAccept(id,

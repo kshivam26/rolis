@@ -483,10 +483,10 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
       verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
       cRPCEvents[crpc_id] = std::make_pair(cb, e);
       // Log_info("size of sitesInfo: %d", sitesInfo_.size());
-      Log_info("**** inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp0; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
+      // Log_info("#### inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp0; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
       auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
       Future::safe_release(f);
-      Log_info("**** inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp1; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
+      // Log_info("#### inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp1; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
     // break;
     }
   }
@@ -498,27 +498,27 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
                   MarshallDeputy cmd,
                   std::vector<uint16_t>& addrChain, 
                   std::vector<BalValResult>& state) {
-  Log_info("**** inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d", par_id);
-  Log_info("MultiPaxosCommo::CrpcBulkAccept; cp 0 with crpc_id: %ld", id);
+  // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d", par_id);
+  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with crpc_id: %ld", id);
   auto proxies = rpc_par_proxies_[par_id];
   for (auto& p : proxies){
     if(p.first == addrChain[0]){   
-      Log_info("MultiPaxosCommo::CrpcBulkAccept; cp 1 with crpc_id: %ld", id);   
-      Log_info("**** inside MultiPaxosCommo::CrpcBulkAccept cp1; with par_id: %d", par_id);
+      // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 1 with crpc_id: %ld", id);   
+      // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp1; with par_id: %d", par_id);
       auto proxy = (MultiPaxosProxy*) p.second;
       auto f = proxy->async_CrpcBulkAccept(id, cmd, addrChain, state);
       if (!f){
-        Log_info("**** returned future is nullptr with par_id: %d", par_id);
+        // Log_info("#### returned future is nullptr with par_id: %d", par_id);
       }
       // rrr::i32 __ret__ = f->get_error_code();
       
       Future::safe_release(f);
       // Log_info("***** returned from calling async_CrpcBulkAccept; error_code: %d",__ret__);
-      Log_info("**** returning MultiPaxosCommo::CrpcBulkAccept with par_id: %d", par_id);
+      // Log_info("#### returning MultiPaxosCommo::CrpcBulkAccept with par_id: %d", par_id);
       break;
     }
   }
-  Log_info("MultiPaxosCommo::CrpcBulkAccept; cp 2 with crpc_id: %ld", id);
+  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 2 with crpc_id: %ld", id);
 }
 
 // used
