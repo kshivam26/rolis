@@ -150,6 +150,10 @@ void ServerConnection::handle_read() {
        if (block_read_in.content_size() < sizeof(i32)) {
           return;
        }
+
+      if (bytes_read == -1){
+        Log_info("#### even though bytes read returned error, we still continue ahead");
+      }
     }
 
     list<Request*> complete_requests; 
@@ -159,6 +163,9 @@ void ServerConnection::handle_read() {
       Log_info("*alarm4 bytes read from socket %d", pckt_bytes);
       if(block_read_in.content_size() < packet_size + sizeof(i32)){
         return;
+      }
+      if (pckt_bytes == -1){
+        Log_info("#### even though bytes read returned error, we still continue ahead");
       }
       verify(block_read_in.read(&packet_size, sizeof(i32)) == sizeof(i32));
       Request* req = new Request;
