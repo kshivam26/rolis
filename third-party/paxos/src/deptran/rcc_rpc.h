@@ -437,9 +437,9 @@ private:
         this->BulkAccept(*in_0, out_0, out_1, __defer__);
     }
     void __CrpcBulkAccept__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
-        Log_info("****inside __CrpcBulkAccept__wrapper__; cp1");
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp1");
         uint64_t* in_0 = new uint64_t;
-        Log_info("****inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
         req->m >> *in_0;
         MarshallDeputy* in_1 = new MarshallDeputy;
         req->m >> *in_1;
@@ -455,9 +455,9 @@ private:
             delete in_2;
             delete in_3;
         };
-        Log_info("****inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
         rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
-        Log_info("****inside __CrpcBulkAccept__wrapper__; cp3 crpc_id: %ld", *in_0);
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp3 crpc_id: %ld", *in_0);
         this->CrpcBulkAccept(*in_0, *in_1, *in_2, *in_3, __defer__);
         // Log_info("****inside __CrpcBulkAccept__wrapper__; cp4 crpc_id: %ld", *in_0);
     }
@@ -742,7 +742,7 @@ public:
         return __ret__;
     }
     rrr::Future* async_CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
-        Log_info("****inside async_CrpcBulkAccept; cp1 with crpc_id: %ld", id);
+        // Log_info("#### inside async_CrpcBulkAccept; cp1 with crpc_id: %ld", id);
         rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCBULKACCEPT, __fu_attr__);
         if (__fu__ != nullptr) {
             *__cl__ << id;
@@ -751,11 +751,11 @@ public:
             *__cl__ << state;
             Log_info("****inside async_CrpcBulkAccept; cp2 with crpc_id: %ld", id);
         }
-        Log_info("****inside async_CrpcBulkAccept; cp3 with crpc_id: %ld", id);
+        // Log_info("#### inside async_CrpcBulkAccept; cp3 with crpc_id: %ld", id);
         __cl__->end_request();
-        Log_info("****inside async_CrpcBulkAccept; cp4 with crpc_id: %ld", id);
+        // Log_info("#### inside async_CrpcBulkAccept; cp4 with crpc_id: %ld", id);
         if (__fu__ == nullptr) {
-            Log_info("****inside async_CrpcBulkAccept; __fu__ null with crpc_id: %ld", id);
+            // Log_info("#### inside async_CrpcBulkAccept; __fu__ null with crpc_id: %ld", id);
             // return ENOTCONN;
         }
         
