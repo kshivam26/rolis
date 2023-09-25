@@ -688,14 +688,14 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
           // for single Paxos stream enqueuing
           int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
           while (1) {
-              if (outstanding >= 10) {
+              if (outstanding >= 2) {
                 // std::cout << "*************** lot of outstanding requests:" << outstanding << std::endl;
                 // std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 outstanding = get_outstanding_logs(TThread::getPartitionID ());    
                 continue;
               }
 
-              if (outstanding < 10) {
+              if (outstanding < 2) {
                   outstanding = get_outstanding_logs(TThread::getPartitionID ());
                   break;
               }
