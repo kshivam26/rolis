@@ -354,11 +354,7 @@ class Marshal: public NoCopy {
       if (write_idx < data->size) {
         cnt = ::read(fd, data->ptr + write_idx, bytes);
 
-        // kshivam, uncomment later
-        if(cnt == -1){
-          Log_info("there seems to be some error while reading %s", strerror(errno));
-          Log_info("printing the stack: bytes: %ld, write_idx: %ld, data->size: %ld, data->ptr=null?: %d, read_idx: %ld", bytes, write_idx, data->size, data->ptr==nullptr, read_idx);
-        }
+
 #ifdef RPC_STATISTICS
         stat_marshal_in(fd, data->ptr + write_idx, bytes, cnt);
 #endif // RPC_STATISTICS
@@ -373,7 +369,15 @@ class Marshal: public NoCopy {
 
       assert(write_idx <= data->size);
       assert(read_idx <= write_idx);
-      // Log_info("value being returned is %d", cnt);
+
+      // kshivam, uncomment later
+      if(cnt == -1){
+        Log_info("there seems to be some error while reading %s", strerror(errno));
+        Log_info("printing the stack: bytes: %ld, write_idx: %ld, data->size: %ld, data->ptr=null?: %d, read_idx: %ld", bytes, write_idx, data->size, data->ptr==nullptr, read_idx);
+        return 0;
+      }
+
+      Log_info("value being returned is %d", cnt);
       return cnt;
     }
 
