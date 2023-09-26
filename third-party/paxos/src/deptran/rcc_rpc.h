@@ -749,7 +749,7 @@ public:
             *__cl__ << cmd;
             *__cl__ << addrChain;
             *__cl__ << state;
-            Log_info("****inside async_CrpcBulkAccept; cp2 with crpc_id: %ld", id);
+            // Log_info("****inside async_CrpcBulkAccept; cp2 with crpc_id: %ld", id);
         }
         // Log_info("#### inside async_CrpcBulkAccept; cp3 with crpc_id: %ld", id);
         __cl__->end_request();

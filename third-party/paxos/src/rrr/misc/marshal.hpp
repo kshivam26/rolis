@@ -377,7 +377,7 @@ class Marshal: public NoCopy {
         return 0;
       }
 
-      Log_info("value being returned is %d", cnt);
+      // Log_info("####value being returned is %d", cnt);
       return cnt;
     }
 

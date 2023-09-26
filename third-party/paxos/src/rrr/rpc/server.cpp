@@ -146,7 +146,7 @@ void ServerConnection::handle_read() {
     if(n_peek < sizeof(i32)){
       int bytes_read = block_read_in.chnk_read_from_fd(socket_, sizeof(i32)-n_peek);
     
-      Log_info("*alarm4 bytes read from socket %d", bytes_read);
+      // Log_info("****alarm4 bytes read from socket %d", bytes_read);
        if (block_read_in.content_size() < sizeof(i32)) {
           return;
        }
@@ -160,7 +160,7 @@ void ServerConnection::handle_read() {
     n_peek = block_read_in.peek(&packet_size, sizeof(i32));
     if(n_peek == sizeof(i32)){
       int pckt_bytes = block_read_in.chnk_read_from_fd(socket_, packet_size + sizeof(i32) - block_read_in.content_size());
-      Log_info("*alarm4 bytes read from socket %d", pckt_bytes);
+      // Log_info("****alarm4 bytes read from socket %d", pckt_bytes);
       if(block_read_in.content_size() < packet_size + sizeof(i32)){
         return;
       }
