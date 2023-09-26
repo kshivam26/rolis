@@ -122,7 +122,7 @@ void ServerConnection::end_reply() {
     // set reply size in packet
     if (bmark_ != nullptr) {
         i32 reply_size = out_.get_and_reset_write_cnt();
-        Log_info("*alarm4 client request size is %d", reply_size);
+        // Log_info("*alarm4 client request size is %d", reply_size);
         out_.write_bookmark(bmark_, &reply_size);
         delete bmark_;
         bmark_ = nullptr;

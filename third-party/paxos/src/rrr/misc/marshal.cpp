@@ -342,10 +342,10 @@ size_t Marshal::chnk_read_from_fd(int fd, size_t bytes){
         Log_info("********* write_cnt_ after: %d with fd: %d", write_cnt_, fd);
     }
     // Log_info("********* write_cnt_: %d", write_cnt_); // kshivam marker, uncomment
-    if(read_bytes <= 0){
-        std::cout<< "read_bytes read is less than equal to zero?" << std::endl;
-        return 0;
-    }
+    // if(read_bytes <= 0){
+    //     std::cout<< "read_bytes read is less than equal to zero?" << std::endl;
+    //     return 0;
+    // }
     return read_bytes;
 }
 
