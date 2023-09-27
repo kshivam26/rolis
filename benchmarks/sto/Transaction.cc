@@ -671,33 +671,33 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
           #if defined(SINGLE_PAXOS) //kshivam
           // for single Paxos stream enqueuing
           int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
-        //   while (1) {
-        //       if (outstanding >= 10) {
-        //         outstanding = get_outstanding_logs(TThread::getPartitionID ());    
-        //         continue;
-        //       }
+          while (1) {
+              if (outstanding >= 10) {
+                outstanding = get_outstanding_logs(TThread::getPartitionID ());    
+                continue;
+              }
 
-        //       if (outstanding < 10) {
-        //           outstanding = get_outstanding_logs(TThread::getPartitionID ());
-        //           break;
-        //       }
-        //   }
+              if (outstanding < 10) {
+                  outstanding = get_outstanding_logs(TThread::getPartitionID ());
+                  break;
+              }
+          }
           #endif
 
         #if !defined(NO_ADD_LOG_TO_NC)
           // for single Paxos stream enqueuing
-        //   int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
-        //   while (1) {
-        //       if (outstanding >= 10) {
-        //         outstanding = get_outstanding_logs(TThread::getPartitionID ());    
-        //         continue;
-        //       }
+          int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
+          while (1) {
+              if (outstanding >= 10) {
+                outstanding = get_outstanding_logs(TThread::getPartitionID ());    
+                continue;
+              }
 
-        //       if (outstanding < 10) {
-        //           outstanding = get_outstanding_logs(TThread::getPartitionID ());
-        //           break;
-        //       }
-        //   }
+              if (outstanding < 10) {
+                  outstanding = get_outstanding_logs(TThread::getPartitionID ());
+                  break;
+              }
+          }
           add_log_to_nc((char *)queueLog, pos, TThread::getPartitionID ());
         #endif
 #endif
