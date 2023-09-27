@@ -338,8 +338,8 @@ void BulkCoordinatorMultiPaxos::Accept() {
     shared_ptr<PaxosAcceptQuorumEvent> sp_quorum = nullptr;
 
     Log_info("****wait started for pard_id: %d", par_id_);
-    if (false){
-    //  if (!Config::GetConfig()->isCrpcEnabled()){
+    // if (false){
+     if (!Config::GetConfig()->isCrpcEnabled()){
       // Log_info("is_crpc_enabled is false; calling BroadcastBulkAccept");
       sp_quorum = commo()->BroadcastBulkAccept(par_id_, cmd_, [this, ess_cc](ballot_t ballot, int valid){
         if(!this->in_accept)
