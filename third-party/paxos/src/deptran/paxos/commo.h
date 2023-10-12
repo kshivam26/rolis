@@ -10,6 +10,7 @@ class TxData;
 
 class MultiPaxosCommo : public Communicator {
  public:
+  uint64_t crpc_id_counter = 0;
   std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>> cRPCEvents {};
   MultiPaxosCommo() = delete;
   MultiPaxosCommo(PollMgr*);
@@ -85,6 +86,7 @@ class MultiPaxosCommo : public Communicator {
 
   virtual void
     CrpcBulkAccept(parid_t par_id,
+                  uint16_t recv_id,
                   uint64_t id,
                   MarshallDeputy cmd,
                   std::vector<uint16_t>& addrChain, 

@@ -65,6 +65,8 @@ class PaxosServer : public TxLogServer {
   int leader_id;
   map<pair<slotid_t, slotid_t>, BulkPrepare> bulk_prepares{};  // saves all the prepare ranges.
   map<slotid_t, shared_ptr<PaxosData>> logs_{};
+
+  map<slotid_t, std::shared_ptr<rrr::Coroutine>> commit_coro{};
   ballot_t cur_epoch;
 
   int n_prepare_ = 0;
@@ -77,10 +79,10 @@ class PaxosServer : public TxLogServer {
 
   shared_ptr<PaxosData> GetInstance(slotid_t id) {
     verify(id >= min_active_slot_);
-    // Log_info("**** the current slotid is: %d and value is going to be accessed", id);
+    Log_info("**** the current slot_id: %ld and value is going to be accessed", id);
     auto& sp_instance = logs_[id];
     if(!sp_instance){
-      // Log_info("**** inside GetInstance; sp_instance is null");
+      Log_info("**** inside GetInstance; sp_instance is null for slot_id: %ld", id);
       sp_instance = std::make_shared<PaxosData>();
     }
     // else{
@@ -171,7 +173,7 @@ class PaxosServer : public TxLogServer {
     // for now just free anything 1000 slots before.
     int i = min_active_slot_;
     while (i + 100 < max_executed_slot_) {
-      //Log_info("Erasing entry number %d", i);
+      Log_info("Erasing entry number %d", i);
       logs_.erase(i);
       i++;
     }
@@ -181,6 +183,7 @@ class PaxosServer : public TxLogServer {
   // should be called from locked state.
   void clear_accepted_entries(){
     for(int i = max_committed_slot_; i <= max_accepted_slot_; i++){
+      Log_info("Erasing entry number %ld", i);
       logs_.erase(i);
     }
   }

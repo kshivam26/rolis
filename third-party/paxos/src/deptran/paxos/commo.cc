@@ -291,7 +291,7 @@ shared_ptr<PaxosAcceptQuorumEvent>
 MultiPaxosCommo::BroadcastSyncLog(parid_t par_id,
                                   shared_ptr<Marshallable> cmd,
                                   const std::function<void(shared_ptr<MarshallDeputy>, ballot_t, int)>& cb) {
-  // Log_info("**** inside BroadcastSyncLog");
+  Log_info("**** inside BroadcastSyncLog");
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   int k = (n%2 == 0) ? n/2 : (n/2 + 1);
   auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, k);
@@ -351,7 +351,7 @@ shared_ptr<PaxosAcceptQuorumEvent>
 MultiPaxosCommo::BroadcastSyncCommit(parid_t par_id,
                                   shared_ptr<Marshallable> cmd,
                                   const std::function<void(ballot_t, int)>& cb) {
-  // Log_info("**** inside BroadcastSyncCommit");
+  Log_info("**** inside BroadcastSyncCommit");
   // Log_info("**** inside BroadcastSyncCommit, with size of cmd is: %d", sizeof(cmd));
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   int k = (n%2 == 0) ? n/2 : (n/2 + 1);
@@ -478,22 +478,22 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
       int sizeA = sizeof(&e);
       int sizeB = sizeof(uint64_t);
       verify(sizeA == sizeB);
-      uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
+      uint64_t crpc_id = crpc_id_counter++;
+      Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
+      // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
       // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
       verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
       cRPCEvents[crpc_id] = std::make_pair(cb, e);
-      // Log_info("size of sitesInfo: %d", sitesInfo_.size());
-      // Log_info("#### inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp0; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
       auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
       Future::safe_release(f);
-      // Log_info("#### inside MultiPaxosCommo::CrpcBroadcastBulkAccept cp1; with par_id: %d and crpc_id: %ld", par_id, crpc_id);
-    // break;
+    break;
     }
   }
   return e;
 }
 
 void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
+                  uint16_t recv_id,
                   uint64_t id,
                   MarshallDeputy cmd,
                   std::vector<uint16_t>& addrChain, 
@@ -502,19 +502,12 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
   // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with crpc_id: %ld", id);
   auto proxies = rpc_par_proxies_[par_id];
   for (auto& p : proxies){
-    if(p.first == addrChain[0]){   
-      // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 1 with crpc_id: %ld", id);   
-      // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp1; with par_id: %d", par_id);
+    if(p.first == recv_id){
       auto proxy = (MultiPaxosProxy*) p.second;
       auto f = proxy->async_CrpcBulkAccept(id, cmd, addrChain, state);
-      if (!f){
-        // Log_info("#### returned future is nullptr with par_id: %d", par_id);
-      }
-      // rrr::i32 __ret__ = f->get_error_code();
-      
+
       Future::safe_release(f);
-      // Log_info("***** returned from calling async_CrpcBulkAccept; error_code: %d",__ret__);
-      // Log_info("#### returning MultiPaxosCommo::CrpcBulkAccept with par_id: %d", par_id);
+
       break;
     }
   }
