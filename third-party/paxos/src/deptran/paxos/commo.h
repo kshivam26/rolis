@@ -11,6 +11,7 @@ class TxData;
 class MultiPaxosCommo : public Communicator {
  public:
   uint64_t crpc_id_counter = 0;
+  bool direction = false;
   std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>> cRPCEvents {};
   MultiPaxosCommo() = delete;
   MultiPaxosCommo(PollMgr*);

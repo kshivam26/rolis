@@ -439,13 +439,25 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
 
   sitesInfo_.push_back(leader_site_id);
 
-  for (auto& p : proxies) { 
-    auto id = p.first;
-    // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
-    if (id != leader_site_id) { // #cPRC additional
-      sitesInfo_.push_back(id); // #cPRC additional
-    }                           // #cPRC additional
+  if (direction){
+    for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) {
+        auto id = it->first; // Access the element through the reverse iterator
+        if (id != leader_site_id) { // #cPRC additional
+          sitesInfo_.push_back(id); // #cPRC additional
+        }
+    }
   }
+  else{
+    for (auto& p : proxies) { 
+      auto id = p.first;
+      // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+      if (id != leader_site_id) { // #cPRC additional
+        sitesInfo_.push_back(id); // #cPRC additional
+      }                           // #cPRC additional
+    }
+  }
+  
+  direction = !direction;
 
   sitesInfo_.push_back(leader_site_id);
 
@@ -499,7 +511,7 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
                   std::vector<uint16_t>& addrChain, 
                   std::vector<BalValResult>& state) {
   // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d", par_id);
-  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with crpc_id: %ld", id);
+  Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with par_id:%d, crpc_id: %ld", par_id, id);
   auto proxies = rpc_par_proxies_[par_id];
   for (auto& p : proxies){
     if(p.first == recv_id){
@@ -511,7 +523,7 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
       break;
     }
   }
-  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 2 with crpc_id: %ld", id);
+  Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 2 with par_id:%d, crpc_id: %ld", par_id, id);
 }
 
 // used
