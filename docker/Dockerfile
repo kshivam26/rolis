@@ -8,7 +8,7 @@ RUN apt-get clean && \
 
 # install basic libraries
 RUN apt-get update
-RUN apt-get install -y git vim htop sudo make cmake gcc gdb g++ strace silversearcher-ag net-tools iperf3 nload iproute2 wget pkg-config
+RUN apt-get install -y git vim htop sudo make cmake gcc gdb g++ strace silversearcher-ag net-tools iperf3 nload iproute2 wget pkg-config cpulimit
 
 # copy .gitconfig
 COPY gitconfig /root/.gitconfig
@@ -21,3 +21,5 @@ RUN git clone --branch crpc_test https://github.com/akshat2602/rolis.git
 WORKDIR "/root/rolis"
 # install dependencies
 RUN bash install.sh
+RUN make paxos
+RUN bash multi.sh
