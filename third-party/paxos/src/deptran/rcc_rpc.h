@@ -745,11 +745,15 @@ public:
         // Log_info("#### inside async_CrpcBulkAccept; cp1 with crpc_id: %ld", id);
         rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCBULKACCEPT, __fu_attr__);
         if (__fu__ != nullptr) {
+            // Log_info("####inside async_CrpcBulkAccept; cp2-1 with crpc_id: %ld", id);
             *__cl__ << id;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-2 with crpc_id: %ld", id);
             *__cl__ << cmd;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-3 with crpc_id: %ld", id);
             *__cl__ << addrChain;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-4 with crpc_id: %ld", id);
             *__cl__ << state;
-            // Log_info("****inside async_CrpcBulkAccept; cp2 with crpc_id: %ld", id);
+            // Log_info("####inside async_CrpcBulkAccept; cp2-5 with crpc_id: %ld", id);
         }
         // Log_info("#### inside async_CrpcBulkAccept; cp3 with crpc_id: %ld", id);
         __cl__->end_request();

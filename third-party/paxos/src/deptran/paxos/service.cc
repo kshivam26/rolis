@@ -153,9 +153,9 @@ void MultiPaxosServiceImpl::CrpcBulkAccept(const uint64_t& id,
                             addrChain,
                             state);
     defer->reply();
-    Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; reply sent back for crpc_id: %ld; calling RunPendingCommitCoroutine", id);
+    // Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; reply sent back for crpc_id: %ld; calling RunPendingCommitCoroutine", id);
     sched_->RunPendingCommitCoroutine();
-    Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; done calling RunPendingCommitCoroutine");
+    // Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; done calling RunPendingCommitCoroutine");
   });
 }
 

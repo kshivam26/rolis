@@ -372,8 +372,8 @@ class Marshal: public NoCopy {
 
       // kshivam, uncomment later
       if(cnt == -1){
-        Log_info("there seems to be some error while reading %s", strerror(errno));
-        Log_info("printing the stack: bytes: %ld, write_idx: %ld, data->size: %ld, data->ptr=null?: %d, read_idx: %ld", bytes, write_idx, data->size, data->ptr==nullptr, read_idx);
+        // Log_info("there seems to be some error while reading %s", strerror(errno));
+        // Log_info("printing the stack: bytes: %ld, write_idx: %ld, data->size: %ld, data->ptr=null?: %d, read_idx: %ld", bytes, write_idx, data->size, data->ptr==nullptr, read_idx);
         return 0;
       }
 

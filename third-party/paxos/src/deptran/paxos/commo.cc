@@ -491,7 +491,7 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
       int sizeB = sizeof(uint64_t);
       verify(sizeA == sizeB);
       uint64_t crpc_id = ++crpc_id_counter;
-      Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
+      // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
       // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
       // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
       verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
@@ -511,7 +511,7 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
                   std::vector<uint16_t>& addrChain, 
                   std::vector<BalValResult>& state) {
   // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d", par_id);
-  Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with par_id:%d, crpc_id: %ld", par_id, id);
+  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with par_id:%d, crpc_id: %ld", par_id, id);
   auto proxies = rpc_par_proxies_[par_id];
   for (auto& p : proxies){
     if(p.first == recv_id){
@@ -523,7 +523,7 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
       break;
     }
   }
-  Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 2 with par_id:%d, crpc_id: %ld", par_id, id);
+  // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 2 with par_id:%d, crpc_id: %ld", par_id, id);
 }
 
 // used
