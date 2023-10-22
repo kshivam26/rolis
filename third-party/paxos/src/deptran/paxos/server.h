@@ -67,6 +67,8 @@ class PaxosServer : public TxLogServer {
   map<slotid_t, shared_ptr<PaxosData>> logs_{};
 
   map<slotid_t, std::shared_ptr<rrr::Coroutine>> commit_coro{};
+  vector<std::shared_ptr<rrr::Coroutine>> ready_commit_coro;
+  set<slotid_t> accepted_slots;
   ballot_t cur_epoch;
 
   int n_prepare_ = 0;
@@ -79,15 +81,16 @@ class PaxosServer : public TxLogServer {
 
   shared_ptr<PaxosData> GetInstance(slotid_t id) {
     verify(id >= min_active_slot_);
-    Log_info("**** the current slot_id: %ld and value is going to be accessed", id);
+    Log_info("#### the current par_id:%d, slot_id: %ld and value is going to be accessed", partition_id_, id);
     auto& sp_instance = logs_[id];
     if(!sp_instance){
-      Log_info("**** inside GetInstance; sp_instance is null for slot_id: %ld", id);
+      Log_info("#### inside GetInstance; sp_instance is null for par_id:%d, slot_id: %ld", partition_id_, id);
       sp_instance = std::make_shared<PaxosData>();
     }
     // else{
     //   // Log_info("**** the value of max_ballot_accepted: %d", sp_instance->max_ballot_accepted_);
     // }
+    Log_info("#### returning from GetInstance for par_id:%d, slot_id: %ld", partition_id_, id);
     return sp_instance;
   }
 
@@ -163,6 +166,18 @@ class PaxosServer : public TxLogServer {
                   i32* ballot,
                   i32 *valid,
                   const function<void()> &cb);
+
+  void RunPendingCommitCoroutine(){
+    for(auto coro: ready_commit_coro){
+      Log_info("#### PaxosServer::RunPendingCommitCoroutine; running coroutine from the ready_commit_coro vector");
+      coro->Continue();
+    }
+
+    Log_info("#### PaxosServer::RunPendingCommitCoroutine; clearing ready_commit_coro vector");
+    ready_commit_coro.clear();
+  }
+
+  bool NotEndCmd(shared_ptr<Marshallable> &cmd);
 
   int get_open_slot(){
     return cur_open_slot_++;

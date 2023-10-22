@@ -420,6 +420,7 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
                                const function<void()> &cb) {
   //Log_info("here accept");
   //std::lock_guard<std::recursive_mutex> lock(mtx_);
+  std::shared_ptr<rrr::Coroutine> toRunCoro = nullptr;
   auto bcmd = dynamic_pointer_cast<BulkPaxosCmd>(cmd);
   *valid = 1;
   ballot_t cur_b = bcmd->ballots[0];
@@ -449,17 +450,18 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
   //cb();
   //return;
   // Log_info("multi-paxos scheduler accept for slot: %ld, par_id: %d", cur_slot, partition_id_);
-  Log_info("**** inside PaxosServer::OnBulkAccept; bcmd->slots.size(): %d", bcmd->slots.size());
+  Log_info("#### inside PaxosServer::OnBulkAccept; bcmd->slots.size(): %d", bcmd->slots.size());
   for(int i = 0; i < bcmd->slots.size(); i++){
       slotid_t slot_id = bcmd->slots[i];
       ballot_t ballot_id = bcmd->ballots[i];
-      Log_info("**** inside PaxosServer::OnBulkAccept; inside loop, slot_id: %ld", slot_id);
+      Log_info("#### inside PaxosServer::OnBulkAccept; inside loop, par_id: %d, slot_id: %ld",  partition_id_, slot_id);
       // Log_info("**** OnBulkAccept; ballot_id:%d", ballot_id);
       mtx_.lock();
       if(cur_epoch > ballot_id){
         *valid = 0;
         *ballot = cur_epoch;
         mtx_.unlock();
+        Log_info("#### inside PaxosServer::OnBulkAccept; breaking breaking; par_id: %d, slot_id: %ld",  partition_id_, slot_id); // kshivam: POI
         break;
       } else{
         if(cur_epoch < ballot_id){
@@ -482,17 +484,31 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
         //verify(instance->max_ballot_accepted_ < ballot_id);
         instance->max_ballot_seen_ = ballot_id;
         instance->max_ballot_accepted_ = ballot_id;
-        Log_info("#### inside PaxosServer::OnBulkAccept; slot_id: %ld, max_ballot_accepted_ set to: %ld",  slot_id, instance->max_ballot_accepted_);
+        Log_info("#### inside PaxosServer::OnBulkAccept; par_id: %d, slot_id: %ld, max_ballot_accepted_ set to: %ld",  partition_id_, slot_id, instance->max_ballot_accepted_);
         instance->accepted_cmd_ = bcmd->cmds[i].get()->sp_data_;
+        //kshivam: uncomment to check the slot which accepted the kill/done command
+        // auto& check = dynamic_cast<LogEntry&>(*instance->accepted_cmd_);
+        // if (check.length == 0){
+        //     Log_info("#### inside PaxosServer::OnBulkAccept; par_id: %d, slot_id: %ld, got accepted cmd as 0",  partition_id_, slot_id, instance->max_ballot_accepted_);
+        // }
+        //****
+        accepted_slots.insert(slot_id);
         max_accepted_slot_ = slot_id;
         n_accept_++;
         *valid &= 1;
 	      *ballot = ballot_id;
 
         if (commit_coro.find(slot_id) != commit_coro.end()){
-          Log_info("#### inside PaxosServer::OnBulkAccept; slot_id: %ld, continuing commit coroutine", slot_id);
-          commit_coro[slot_id]->Continue();
+          Log_info("#### inside PaxosServer::OnBulkAccept; par_id: %d, slot_id: %ld, found commit coroutine", partition_id_, slot_id);
+          // toRunCoro = commit_coro[slot_id]; // kshivam, exits current coroutine as soon as this is done // not running coroutine immediately, but running it after sending reply for accept
+          ready_commit_coro.push_back(commit_coro[slot_id]);
           commit_coro.erase(slot_id);
+          // Log_info("#### in par_id: %d, current size of commit_coro map is: %d", partition_id_, commit_coro.size());
+          // if (commit_coro.size() > 0){
+          //   for (auto key: commit_coro){
+          //     Log_info("#### in par_id: %d, commit_coro map key: %d", partition_id_, key.first);
+          //   }
+          // }
         }
       } 
   }
@@ -501,6 +517,10 @@ void PaxosServer::OnBulkAccept(shared_ptr<Marshallable> &cmd,
   //es->state_unlock();
   cb();
   Log_info("multi-paxos scheduler accept for slot: %ld, par_id: %d", cur_slot, partition_id_);
+  // if (toRunCoro){
+  //   Log_info("#### inside PaxosServer::OnBulkAccept; par_id: %d, slot_id: %ld, continuing commit coroutine", partition_id_, cur_slot);
+  //   toRunCoro->Continue();
+  // }
 }
 
 
@@ -564,20 +584,36 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
 
     int n = Config::GetConfig()->GetPartitionSize(par_id);
     int k = (n%2 == 0) ? n/2 : (n/2 + 1);
-    Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 0, crpc_id: %ld; value of k: %d", id, k);
-    if (st.size() >= k){
+    Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 0, par_id:%d, crpc_id: %ld; value of k: %d", par_id, id, k);
+
+    // if (st.size() >= k && this->NotEndCmd(const_cast<MarshallDeputy&>(cmd).sp_data_)){ //kshivam, maybe change it later, hacky to check if it is end signal
+    if (st.size() >= k){ // kshivam: since have added a coroutine sleep, may not need this check
       auto temp_addrChain = vector<uint16_t>{addrChainCopy.back()};
+      Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[chain_size-1], id,
                                                           cmd, temp_addrChain, st);
-      Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, crpc_id: %ld; value of k: %d", id, k);
+      Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sent response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
     }
 
-    Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 1, crpc_id: %ld; value of k: %d", id, k);    
+    Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 1, par_id:%d, crpc_id: %ld; value of k: %d", par_id, id, k);    
     ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[0], id,
                                                           cmd, addrChainCopy, st);
 
-    // Log_info("#### inside PaxosServer::CrpcBulkAccept cp6 with crpc_id: %ld", id);
+    Log_info("#### inside PaxosServer::CrpcBulkAccept cp6 with par_id:%d, crpc_id: %ld", par_id, id);
 }
+
+// kshivam: maybe later change OnBulkAccept to return false/true? // delete later?
+// bool PaxosServer::NotEndCmd(shared_ptr<Marshallable> &cmd){
+//   auto bcmd = dynamic_pointer_cast<BulkPaxosCmd>(cmd);
+//   auto interim = bcmd->cmds[0].get()->sp_data_;
+//   auto& check = dynamic_cast<LogEntry&>(*interim);
+//   if (check.length == 0){
+//     Log_info("#### inside PaxosServer::NotEndCmd; got 0 length end signal command");
+//     return false;
+//   }
+//   return true;
+// }
+
 
 void PaxosServer::OnSyncCommit(shared_ptr<Marshallable> &cmd,
                                i32* ballot,
@@ -700,18 +736,35 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   *valid = 1;
   ballot_t cur_b = bcmd->ballots[0];
   slotid_t cur_slot = bcmd->slots[0];
-  //Log_info("multi-paxos scheduler decide for slot: %ld", cur_slot);
-  auto instance1 = GetInstance(cur_slot);
-  Log_info("**** OnBulkCommit cp 0; slot_id: %d, max_ballot_accepted: %d, ballot_id: %d", cur_slot, instance1->max_ballot_accepted_, cur_b);
-        // verify(instance->max_ballot_accepted_ == ballot_id);
-  if (instance1->max_ballot_accepted_ != cur_b){
-    Log_info("**** OnBulkCommit cp 1; slot_id: %d, veify failed, yielding coroutine now, hopefully we will be back", cur_slot);
+  if (accepted_slots.find(cur_slot) == accepted_slots.end()){
+    Log_info("#### OnBulkCommit cp 1; par_id: %d, slot_id: %d, verify failed, yielding coroutine now, hopefully we will be back; current_commit_coro size: %d", partition_id_, cur_slot, commit_coro.size());
     auto coro = Coroutine::CurrentCoroutine();
     commit_coro[cur_slot] = coro;
     coro->Yield();
+    Log_info("#### OnBulkCommit cp 2; par_id: %d, slot_id: %d, we are back", partition_id_, cur_slot);
   }
+  //Log_info("multi-paxos scheduler decide for slot: %ld", cur_slot);
+  // auto instance1 = GetInstance(cur_slot);
+  // Log_info("**** OnBulkCommit cp 0; par_id: %d, slot_id: %d, max_ballot_accepted: %d, ballot_id: %d", partition_id_, cur_slot, instance1->max_ballot_accepted_, cur_b);
+        // verify(instance->max_ballot_accepted_ == ballot_id);
+  // if (instance1->max_ballot_accepted_ != cur_b){
+  //   Log_info("**** OnBulkCommit cp 1; par_id: %d, slot_id: %d, veify failed, yielding coroutine now, hopefully we will be back; current_commit_coro size: %d", partition_id_, cur_slot, commit_coro.size());
+  //   auto coro = Coroutine::CurrentCoroutine();
+  //   commit_coro[cur_slot] = coro;
+  //   if (bcmd->slots.size() > 1){
+  //     Log_info("**** OnBulkCommit cp 1.1; par_id: %d, slot_id: %d, size of slots vector: :%d", partition_id_, cur_slot, bcmd->slots.size());
+  //     for (auto s: bcmd->slots)
+  //       Log_info("**** OnBulkCommit cp 1.2; par_id: %d, slot_id: %d", partition_id_, s);
+  //   }
+  //   if (commit_coro.size() > 1){
+  //     for (auto key: commit_coro){
+  //       Log_info("#### OnBulkCommit cp 1.3; par_id: %d, commit_coro map key: %d", partition_id_, key.first);
+  //     }
+  //   }
+  //   coro->Yield();
+  // }
 
-  Log_info("**** OnBulkCommit cp 2; slot_id: %d, we are back", cur_slot);
+  
   int req_leader = bcmd->leader_id;
   //es->state_lock();
   mtx_.lock();
@@ -745,8 +798,10 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
         *valid = 0;
         *ballot = cur_epoch;
         mtx_.unlock();
+        Log_info("#### OnBulkCommit; inside if(cur_epoch > ballot_id); par_id: %d, slot_id: %d, ballot_id: %d", partition_id_, slot_id, ballot_id);
         break;
       } else{
+        // moving the check below
         if(cur_epoch < ballot_id){
           mtx_.unlock();
           for(int i = 0; i < pxs_workers_g.size()-1; i++){
@@ -762,19 +817,26 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
         es->state_lock();
         es->set_leader(req_leader);
         es->state_unlock();
-        
+        // auto instance1 = GetInstance(cur_slot);
+        // if (instance1->max_ballot_accepted_ != cur_b){ // kshivam: some better check? just check if accept for the slot has been received or not?
+        //   Log_info("#### OnBulkCommit cp 1; par_id: %d, slot_id: %d, verify failed, yielding coroutine now, hopefully we will be back; current_commit_coro size: %d", partition_id_, cur_slot, commit_coro.size());
+        //   auto coro = Coroutine::CurrentCoroutine();
+        //   commit_coro[cur_slot] = coro;
+        //   coro->Yield();
+        //   Log_info("#### OnBulkCommit cp 2; par_id: %d, slot_id: %d, we are back", partition_id_, cur_slot);
+        // }
         auto instance = GetInstance(slot_id);
-        Log_info("**** OnBulkCommit; slot_id: %d, max_ballot_accepted: %d, ballot_id: %d", slot_id, instance->max_ballot_accepted_, ballot_id);
+        Log_info("#### OnBulkCommit; par_id: %d, slot_id: %d, max_ballot_accepted: %d, ballot_id: %d", partition_id_, slot_id, instance->max_ballot_accepted_, ballot_id);
         verify(instance->max_ballot_accepted_ == ballot_id); //todo: for correctness, if a new commit comes, sync accept.
         instance->max_ballot_seen_ = ballot_id;
         instance->max_ballot_accepted_ = ballot_id;
-        Log_info("#### inside PaxosServer::OnBulkCommit;; slot_id: %ld, max_ballot_accepted_ set to: %ld",  slot_id, instance->max_ballot_accepted_);
+        Log_info("#### inside PaxosServer::OnBulkCommit;; par_id: %d, slot_id: %ld, max_ballot_accepted_ set to: %ld", partition_id_, slot_id, instance->max_ballot_accepted_);
         instance->committed_cmd_ = instance->accepted_cmd_;
         *valid &= 1;
         if (slot_id > max_committed_slot_) {
             max_committed_slot_ = slot_id;
         }
-        
+        // committed_slots.insert(slot_id);
       }
   }
   //es->state_unlock();
@@ -784,7 +846,7 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   }
   //mtx_.lock();
   //Log_info("The commit batch size is %d", bcmd->slots.size());
-  for (slotid_t id = max_executed_slot_ + 1; id <= max_committed_slot_; id++) {
+  for (slotid_t id = max_executed_slot_ + 1; id <= max_committed_slot_; id++) { // kshivam: may not be right, what if there is a hole in the commands?
       //break;
       auto next_instance = GetInstance(id);
       if (next_instance->committed_cmd_) {
@@ -792,9 +854,14 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
           commit_exec.push_back(next_instance);
           if(req_leader == 0)
 		Log_debug("multi-paxos par:%d loc:%d executed slot %ld now", partition_id_, loc_id_, id);
+    // Log_info("################### BulkCommit; par_id: %d, slot_id: %d added to committed_slots", partition_id_, id);
           max_executed_slot_++;
           n_commit_++;
       } else {
+      // Log_info("################### BulkCommit; UNLIKELY 1 #################");
+      // if (committed_slots.find(id) == committed_slots.end()){
+      //   Log_info("################### BulkCommit; par_id: %d, slot_id: %d was never added to committed_slots #################", partition_id_, id);
+      // }
 	  if(req_leader != 0)
 		Log_info("Some slot is stopping commit %d %d and partition %d", id, bcmd->slots[0], partition_id_);
           break;
@@ -807,6 +874,14 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   //Log_info("Committing %d", commit_exec.size());
   for(int i = 0; i < commit_exec.size(); i++){
       //auto x = new PaxosData();
+      // Log_info("calling app_next for par_id: %d, slot_id: %d", partition_id_, commit_exec[i]->committed_cmd_);
+      // auto& check = dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length;
+      if (dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
+        Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 100ms", partition_id_);
+        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(100000);
+        commit_wait_event->Wait();
+        Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 100ms", partition_id_);
+      }
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
   }
 
@@ -818,7 +893,7 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   //mtx_.unlock();
   cb();
 
-  // Log_info("**** OnBulkCommit; ballot:%d, and valid: %d", *ballot, *valid);
+  Log_info("**** OnBulkCommit returning; par_id: %d, ballot:%d, and valid: %d", partition_id_, *ballot, *valid);
 }
 
 void PaxosServer::OnCrpcBulkCommit(const uint64_t& id,

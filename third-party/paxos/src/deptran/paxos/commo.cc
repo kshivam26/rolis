@@ -490,7 +490,7 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
       int sizeA = sizeof(&e);
       int sizeB = sizeof(uint64_t);
       verify(sizeA == sizeB);
-      uint64_t crpc_id = crpc_id_counter++;
+      uint64_t crpc_id = ++crpc_id_counter;
       Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
       // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
       // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
