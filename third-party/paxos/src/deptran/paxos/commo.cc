@@ -615,6 +615,7 @@ void MultiPaxosCommo::CrpcBulkDecide(parid_t par_id,
     auto f = proxy->async_CrpcBulkDecide(id, cmd, addrChain, state);
     Future::safe_release(f);
     // Log_info("**** returning MultiPaxosCommo::CrpcBulkDecide");
+    // is this comment visible on container?
     break;
   }
 }
