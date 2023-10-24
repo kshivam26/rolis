@@ -22,7 +22,7 @@ mkdir -p xxxx15
 sudo cgcreate -t $USER:$USER -a $USER:$USER -g cpuset:/cpulimitf
 let yyml=num_threads+1
 # sudo cgset -r cpuset.mems=0 cpulimitf
-sudo cgset -r cpuset.cpus=0-$num_threads cpulimitf
+sudo cgset -r cpuset.cpus=$cpuset_cpus cpulimitf
 sudo cgset -r cpu.cfs_quota_us=$((cfs_quota_us * 1000)) cpulimitf
 sudo cgset -r cpu.shares=0 cpulimitf
 
