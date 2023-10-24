@@ -14,7 +14,11 @@ if [ "$cfs_quota_us" -lt 0 ] || [ "$cfs_quota_us" -gt 100 ]; then
 fi
 
 total_cores=$(nproc)
-cpuset_cpus="$(echo "scale=0; $total_cores/3 + 1" | bc)-$(echo "scale=0; $total_cores*2/3" | bc)"
+lower_bound=$(($total_cores/3 + 1))
+upper_bound=$(($total_cores*2/3))
+upper_bound=$(($upper_bound < ($num_threads + $lower_bound) ? $upper_bound : ($num_threads + $lower_bound)))
+
+cpuset_cpus="$lower_bound-$upper_bound"
 
 sudo cgdelete -g cpuset:/cpulimitf
 mkdir -p xxxx15
