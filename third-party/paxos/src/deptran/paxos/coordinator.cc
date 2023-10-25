@@ -58,11 +58,7 @@ namespace janus
     }*/
     // std::lock_guard<std::recursive_mutex> lock(mtx_);
     verify(!in_submission_);
-<<<<<<< HEAD
-    // Log_info("#### inside BulkCoordinatorMultiPaxos::BulkSubmit");
-=======
     // Log_debug("inside BulkCoordinatorMultiPaxos::BulkSubmit");
->>>>>>> 01495cd (Removed logs)
     in_submission_ = true;
     cmd_ = cmd;
     commit_callback_ = func;
