@@ -502,7 +502,7 @@ namespace janus
     double randomValue = distribution(generator);
     if (randomValue < probabilityFirstLoop)
     {
-      // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-0; par_id: %d", par_id);
+      Log_info("In first direction");
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
       {
         auto id = it->first; // Access the element through the reverse iterator
@@ -514,7 +514,7 @@ namespace janus
     }
     else
     {
-      // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-1; par_id: %d", par_id);
+      Log_info("In second direction");
       for (auto &p : proxies)
       {
         auto id = p.first;
