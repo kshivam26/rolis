@@ -492,7 +492,9 @@ namespace janus
     std::vector<uint16_t> sitesInfo_;
 
     sitesInfo_.push_back(leader_site_id);
-    std::default_random_engine generator;
+
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
     // Fetch this number from on the basis of stats from throughput
