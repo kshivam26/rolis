@@ -496,10 +496,11 @@ namespace janus
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
     // Fetch this number from on the basis of stats from throughput
-    double probabilityFirstLoop = 0.8;
+    double probabilityFirstLoop = 0.7;
 
     // Generate a random number between 0 and 1
     double randomValue = distribution(generator);
+    Log_info("randomValue is: %f", randomValue);
     if (randomValue < probabilityFirstLoop)
     {
       Log_info("In first direction");
