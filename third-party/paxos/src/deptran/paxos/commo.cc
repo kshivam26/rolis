@@ -492,19 +492,15 @@ namespace janus
     std::vector<uint16_t> sitesInfo_;
 
     sitesInfo_.push_back(leader_site_id);
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-    // // old chain topology
-    // for (auto& p : proxies) {
-    //   auto id = p.first;
-    //   // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
-    //   if (id != leader_site_id) { // #cPRC additional
-    //     sitesInfo_.push_back(id); // #cPRC additional
-    //   }                           // #cPRC additional
-    // }
+    // Fetch this number from on the basis of stats from throughput
+    double probabilityFirstLoop = 0.8;
 
-    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1; par_id: %d", par_id);
-    // bi-directional chain topology
-    if (direction)
+    // Generate a random number between 0 and 1
+    double randomValue = distribution(generator);
+    if (randomValue < probabilityFirstLoop)
     {
       // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-0; par_id: %d", par_id);
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
