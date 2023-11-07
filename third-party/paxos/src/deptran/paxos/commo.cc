@@ -502,6 +502,7 @@ namespace janus
 
     // Generate a random number between 0 and 1
     double randomValue = distribution(generator);
+    Log_info("In thread: %d", gettid());
     Log_info("randomValue is: %f", randomValue);
     if (randomValue < probabilityFirstLoop)
     {
