@@ -72,10 +72,10 @@ namespace janus
                               now = std::chrono::system_clock::now();
                               Log_info("#### inside ThroughputCor; now: %ld", now.time_since_epoch().count());
                               Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
-                              double diff = now.time_since_epoch().count() - last_checked_time.time_since_epoch().count();
-                              Log_info("#### inside ThroughputCor; diff.count(): %ld", diff);
-                              double temp_dir_1_through = temp_dir_1_comm / diff;
-                              double temp_dir_2_through = temp_dir_2_comm / diff;
+                              auto diff = std::chrono::duration_cast<std::chrono::microseconds>(now - last_checked_time);
+                              Log_info("#### inside ThroughputCor; diff.count(): %ld", diff.count());
+                              double temp_dir_1_through = temp_dir_1_comm / diff.count();
+                              double temp_dir_2_through = temp_dir_2_comm / diff.count();
                               Log_info("#### inside ThroughputCor; temp_dir_1_through: %ld", temp_dir_1_comm);
                               Log_info("#### inside ThroughputCor; temp_dir_2_through: %ld", temp_dir_2_comm);
                               // Set the dirProbability variable
