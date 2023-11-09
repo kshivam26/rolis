@@ -31,8 +31,8 @@ namespace janus
                                 Log_info("#### inside ThroughputCor; crpc_id_to_dir.size() == 0");
                                 continue;
                               }
-                              uint64_t temp_dir_1_through = 0;
-                              uint64_t temp_dir_2_through = 0;
+                              uint64_t temp_dir_1_comm = 0;
+                              uint64_t temp_dir_2_comm = 0;
                               auto now = std::chrono::system_clock::now();
                               // Iterate over all crpc_ids and check if they are more than 2 second old, 
                               // if yes then delete them and calculate throughput with the others
@@ -57,25 +57,25 @@ namespace janus
                                   if (dir)
                                   {
                                     Log_info("#### inside ThroughputCor; adding to dir 1");
-                                    temp_dir_1_through++;
+                                    temp_dir_1_comm++;
                                   }
                                   else
                                   {
                                     Log_info("#### inside ThroughputCor; adding to dir 2");
-                                    temp_dir_2_through++;
+                                    temp_dir_2_comm++;
                                   }
                                   ++start_it;
                                 }
                               }
                               now = std::chrono::system_clock::now();
                               auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - last_checked_time);
-                              temp_dir_1_through = temp_dir_1_through / diff.count();
-                              temp_dir_2_through = temp_dir_2_through / diff.count();
-                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %ld", temp_dir_1_through);
-                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %ld", temp_dir_2_through);
+                              double temp_dir_1_through = temp_dir_2_comm / diff.count();
+                              double temp_dir_2_through = temp_dir_2_comm / diff.count();
+                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %ld", temp_dir_1_comm);
+                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %ld", temp_dir_2_comm);
                               // Set the dirProbability variable
-                              uint64_t old_ratio = throughput_dir_1 / throughput_dir_2;
-                              uint64_t new_ratio = temp_dir_1_through / temp_dir_2_through;
+                              double old_ratio = throughput_dir_1 / throughput_dir_2;
+                              double new_ratio = temp_dir_1_through / temp_dir_2_through;
                               Log_info("#### inside ThroughputCor; old_ratio: %ld", old_ratio);
                               Log_info("#### inside ThroughputCor; new_ratio: %ld", new_ratio);
                               // Calculate the change in ratio
