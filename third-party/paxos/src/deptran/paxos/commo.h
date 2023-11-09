@@ -15,8 +15,8 @@ namespace janus
   public:
     uint64_t crpc_id_counter = 0;
     bool direction = false;
-    uint64_t throughput_dir_1 = 1;
-    uint64_t throughput_dir_2 = 1;
+    double throughput_dir_1 = 1;
+    double throughput_dir_2 = 1;
     double dirProbability = 0.5;
     std::chrono::system_clock::time_point last_checked_time;
     std::unordered_map<uint64_t, std::chrono::system_clock::time_point> crpc_id_to_start_time;
