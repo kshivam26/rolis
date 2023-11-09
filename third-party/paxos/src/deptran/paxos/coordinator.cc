@@ -403,6 +403,12 @@ namespace janus
     }
     else
     {
+      if (first_time)
+      {
+        first_time = false;
+        // Call throughput coro
+        commo()->ThroughputCheck();
+      }
       sp_quorum = commo()->CrpcBroadcastBulkAccept(
           par_id_, cmd_, [this, ess_cc](ballot_t ballot, int valid)
           {

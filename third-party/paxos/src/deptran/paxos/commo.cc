@@ -14,6 +14,82 @@ namespace janus
   MultiPaxosCommo::MultiPaxosCommo(PollMgr *poll) : Communicator(poll)
   {
     //  verify(poll != nullptr);
+    this->last_checked_time = std::chrono::system_clock::now();
+  }
+
+  void MultiPaxosCommo::ThroughputCheck()
+  {
+    Coroutine::CreateRun([this]()
+                         {
+                           while (true)
+                           {
+                              // Check if last check was more than 2 second ago, if not then yield
+                              auto ev = Reactor::CreateSpEvent<TimeoutEvent>(2000000);
+                              ev->Wait();
+                              if (crpc_id_to_dir.size() == 0)
+                              {
+                                continue;
+                              }
+                              uint64_t temp_dir_1_through = 0;
+                              uint64_t temp_dir_2_through = 0;
+                              auto now = std::chrono::system_clock::now();
+                              // Iterate over all crpc_ids and check if they are more than 2 second old, 
+                              // if yes then delete them and calculate throughput with the others
+                              auto start_it = crpc_id_to_start_time.begin();
+                              for (; start_it != crpc_id_to_start_time.end();)
+                              {
+                                auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - start_it->second);
+                                if (diff.count() > 2)
+                                {
+                                  Log_info("#### inside ThroughputCor; deleting crpc_id: %ld", start_it->first);
+                                  auto crpc_id = start_it->first;
+                                  crpc_id_to_start_time.erase(start_it++);
+                                  crpc_id_to_end_time.erase(crpc_id);
+                                  crpc_id_to_dir.erase(crpc_id);
+                                }
+                                else
+                                {
+                                  // Get direction of the crpc_id and add it to the corresponding throughput
+                                  auto crpc_id = start_it->first;
+                                  auto dir = crpc_id_to_dir[crpc_id];
+                                  if (dir)
+                                  {
+                                    temp_dir_1_through++;
+                                  }
+                                  else
+                                  {
+                                    temp_dir_2_through++;
+                                  }
+                                  ++start_it;
+                                }
+                              }
+                              auto now = std::chrono::system_clock::now();
+                              auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - last_checked_time);
+                              temp_dir_1_through = temp_dir_1_through / diff.count();
+                              temp_dir_2_through = temp_dir_2_through / diff.count();
+                              // Set the dirProbability variable
+                              uint64_t old_ratio = throughput_dir_1 / throughput_dir_2;
+                              uint64_t new_ratio = temp_dir_1_through / temp_dir_2_through;
+                              // Calculate the change in ratio
+                              double change = (new_ratio - old_ratio) / old_ratio;
+                              // If the change is more than 10% then change the dirProbability variable
+                              if (change > 0.1)
+                              {
+                                dirProbability = dirProbability + 0.1;
+                              }
+                              else if (change < -0.1)
+                              {
+                                dirProbability = dirProbability - 0.1;
+                              }
+                              else 
+                              {
+                                // Do nothing
+                              }
+                              // Update the throughput
+                              throughput_dir_1 = temp_dir_1_through;
+                              throughput_dir_2 = temp_dir_2_through;
+                              last_checked_time = std::chrono::system_clock::now();
+                           } });
   }
 
   // not used
@@ -497,16 +573,13 @@ namespace janus
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-    // Fetch this number from on the basis of stats from throughput
-    double probabilityFirstLoop = 0.7;
-
     // Generate a random number between 0 and 1
     double randomValue = distribution(generator);
-    Log_info("In thread: %d", gettid());
-    Log_info("randomValue is: %f", randomValue);
-    if (randomValue < probabilityFirstLoop)
+
+    if (randomValue < dirProbability)
     {
       Log_info("In first direction");
+      direction = false;
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
       {
         auto id = it->first; // Access the element through the reverse iterator
@@ -518,6 +591,7 @@ namespace janus
     }
     else
     {
+      direction = true;
       Log_info("In second direction");
       for (auto &p : proxies)
       {
@@ -529,9 +603,6 @@ namespace janus
         }                           // #cPRC additional
       }
     }
-
-    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 2; par_id: %d", par_id);
-    direction = !direction;
 
     sitesInfo_.push_back(leader_site_id);
 
@@ -555,6 +626,8 @@ namespace janus
         // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
         cRPCEvents_l_.lock();
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
+        crpc_id_to_dir[crpc_id] = direction;
+        crpc_id_to_start_time[crpc_id] = std::chrono::system_clock::now();
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);

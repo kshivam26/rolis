@@ -13,24 +13,6 @@ namespace janus
 
   shared_ptr<ElectionState> es = ElectionState::instance();
 
-  // void PaxosServer::ThroughputCor()
-  // {
-  //   Coroutine::CreateRun([this]()
-  //                        {
-  //                          while (true)
-  //                          {
-  //                             // Check if last check was more than 1 second ago, if not then yield
-  //                             auto now = std::chrono::system_clock::now();
-  //                             auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - ((MultiPaxosCommo *)(this->commo_))->last_checked_time);
-  //                             if (diff.count() < 2)
-  //                             {
-  //                               auto coro = Coroutine::CurrentCoroutine();
-  //                               coro->Yield();
-  //                               continue;
-  //                             }
-
-  //                          } });
-  // }
 
   void PaxosServer::OnPrepare(slotid_t slot_id,
                               ballot_t ballot,
