@@ -28,6 +28,7 @@ namespace janus
                               ev->Wait();
                               if (crpc_id_to_dir.size() == 0)
                               {
+                                Log_info("#### inside ThroughputCor; crpc_id_to_dir.size() == 0");
                                 continue;
                               }
                               uint64_t temp_dir_1_through = 0;
@@ -38,6 +39,7 @@ namespace janus
                               auto start_it = crpc_id_to_start_time.begin();
                               for (; start_it != crpc_id_to_start_time.end();)
                               {
+                                Log_info("#### inside ThroughputCor; crpc_id_to_start_time.size(): %d", crpc_id_to_start_time.size());
                                 auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - start_it->second);
                                 if (diff.count() > 2)
                                 {
@@ -54,10 +56,12 @@ namespace janus
                                   auto dir = crpc_id_to_dir[crpc_id];
                                   if (dir)
                                   {
+                                    Log_info("#### inside ThroughputCor; adding to dir 1");
                                     temp_dir_1_through++;
                                   }
                                   else
                                   {
+                                    Log_info("#### inside ThroughputCor; adding to dir 2");
                                     temp_dir_2_through++;
                                   }
                                   ++start_it;
@@ -67,22 +71,31 @@ namespace janus
                               auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - last_checked_time);
                               temp_dir_1_through = temp_dir_1_through / diff.count();
                               temp_dir_2_through = temp_dir_2_through / diff.count();
+                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %ld", temp_dir_1_through);
+                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %ld", temp_dir_2_through);
                               // Set the dirProbability variable
                               uint64_t old_ratio = throughput_dir_1 / throughput_dir_2;
                               uint64_t new_ratio = temp_dir_1_through / temp_dir_2_through;
+                              Log_info("#### inside ThroughputCor; old_ratio: %ld", old_ratio);
+                              Log_info("#### inside ThroughputCor; new_ratio: %ld", new_ratio);
                               // Calculate the change in ratio
                               double change = (new_ratio - old_ratio) / old_ratio;
                               // If the change is more than 10% then change the dirProbability variable
                               if (change > 0.1)
                               {
-                                dirProbability = dirProbability + 0.1;
+                                Log_info("#### inside ThroughputCor; change > 0.1");
+                                // Get minimum of 1 and dirProbability + 0.1
+                                dirProbability = std::min(1.0, dirProbability + 0.1);
                               }
                               else if (change < -0.1)
                               {
-                                dirProbability = dirProbability - 0.1;
+                                Log_info("#### inside ThroughputCor; change < -0.1");
+                                // Get maximum of 0 and dirProbability - 0.1
+                                dirProbability = std::max(0.0, dirProbability - 0.1);
                               }
                               else 
                               {
+                                Log_info("#### inside ThroughputCor; change < 0.1 and change > -0.1");
                                 // Do nothing
                               }
                               // Update the throughput
