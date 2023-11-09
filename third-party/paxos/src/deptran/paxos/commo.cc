@@ -71,6 +71,7 @@ namespace janus
                               }
                               now = std::chrono::system_clock::now();
                               Log_info("#### inside ThroughputCor; now: %ld", now.time_since_epoch().count());
+                              Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
                               auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - last_checked_time);
                               Log_info("#### inside ThroughputCor; diff.count(): %ld", diff.count());
                               double temp_dir_1_through = temp_dir_1_comm / diff.count();
