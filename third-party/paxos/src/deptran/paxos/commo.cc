@@ -67,7 +67,7 @@ namespace janus
                                   ++start_it;
                                 }
                               }
-                              auto now = std::chrono::system_clock::now();
+                              now = std::chrono::system_clock::now();
                               auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - last_checked_time);
                               temp_dir_1_through = temp_dir_1_through / diff.count();
                               temp_dir_2_through = temp_dir_2_through / diff.count();
