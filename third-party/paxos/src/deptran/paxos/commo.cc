@@ -23,27 +23,25 @@ namespace janus
                          {
                            while (true)
                            {
-                              // Check if last check was more than 2 second ago, if not then yield
-                              last_checked_time = std::chrono::system_clock::now();
                               Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
-                              auto ev = Reactor::CreateSpEvent<TimeoutEvent>(2000000);
+                              auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
                               ev->Wait();
                               if (crpc_id_to_dir.size() == 0)
                               {
                                 Log_info("#### inside ThroughputCor; crpc_id_to_dir.size() == 0");
                                 continue;
                               }
-                              uint64_t temp_dir_1_comm = 0;
-                              uint64_t temp_dir_2_comm = 0;
-                              auto now = std::chrono::system_clock::now();
-                              // Iterate over all crpc_ids and check if they are more than 2 second old, 
+                              double temp_dir_1_comm = 0;
+                              double temp_dir_2_comm = 0;
+                              // Iterate over all crpc_ids and check if they are more than a 1 second old, 
                               // if yes then delete them and calculate throughput with the others
+                              auto now = std::chrono::system_clock::now();
                               auto start_it = crpc_id_to_start_time.begin();
                               for (; start_it != crpc_id_to_start_time.end();)
                               {
                                 Log_info("#### inside ThroughputCor; crpc_id_to_start_time.size(): %d", crpc_id_to_start_time.size());
                                 auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - start_it->second);
-                                if (diff.count() > 2)
+                                if (diff.count() > 1)
                                 {
                                   Log_info("#### inside ThroughputCor; deleting crpc_id: %ld", start_it->first);
                                   auto crpc_id = start_it->first;
@@ -56,33 +54,60 @@ namespace janus
                                   // Get direction of the crpc_id and add it to the corresponding throughput
                                   auto crpc_id = start_it->first;
                                   auto dir = crpc_id_to_dir[crpc_id];
+                                  if (crpc_id_to_end_time.find(crpc_id) == crpc_id_to_end_time.end())
+                                  {
+                                    Log_info("#### inside ThroughputCor; crpc_id_to_end_time.find(crpc_id) == crpc_id_to_end_time.end()");
+                                    ++start_it;
+                                    continue;
+                                  }
                                   if (dir)
                                   {
                                     Log_info("#### inside ThroughputCor; adding to dir 1");
-                                    temp_dir_1_comm++;
+                                    temp_dir_1_comm = temp_dir_1_comm + 1;
                                   }
                                   else
                                   {
                                     Log_info("#### inside ThroughputCor; adding to dir 2");
-                                    temp_dir_2_comm++;
+                                    temp_dir_2_comm = temp_dir_2_comm + 1;
                                   }
                                   ++start_it;
                                 }
                               }
-                              now = std::chrono::system_clock::now();
-                              Log_info("#### inside ThroughputCor; now: %ld", now.time_since_epoch().count());
-                              Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
-                              auto diff = std::chrono::duration_cast<std::chrono::microseconds>(now - last_checked_time);
-                              Log_info("#### inside ThroughputCor; diff.count(): %ld", diff.count());
-                              double temp_dir_1_through = temp_dir_1_comm / diff.count();
-                              double temp_dir_2_through = temp_dir_2_comm / diff.count();
-                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %ld", temp_dir_1_comm);
-                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %ld", temp_dir_2_comm);
+                              // now = std::chrono::system_clock::now();
+                              // Log_info("#### inside ThroughputCor; now: %ld", now.time_since_epoch().count());
+                              // Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
+                              // auto diff = std::chrono::duration_cast<std::chrono::microseconds>(now - last_checked_time);
+                              // Log_info("#### inside ThroughputCor; diff.count(): %ld", diff.count());
+                              // double temp_dir_1_through = temp_dir_1_comm / diff.count();
+                              // double temp_dir_2_through = temp_dir_2_comm / diff.count();
+                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %f", temp_dir_1_comm);
+                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %f", temp_dir_2_comm);
+                              if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
+                              {
+                                Log_info("#### inside ThroughputCor; temp_dir_1_comm == 0 && temp_dir_2_comm == 0");
+                                continue;
+                              }
+                              if (temp_dir_1_comm == 0)
+                              {
+                                dirProbability = dirProbability - 0.1;
+                                throughput_dir_1 = temp_dir_1_comm;
+                                throughput_dir_2 = temp_dir_2_comm;
+                                Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
+                                continue;
+                              }
+                              if (temp_dir_2_comm == 0)
+                              {
+                                dirProbability = dirProbability + 0.1;
+                                throughput_dir_1 = temp_dir_1_comm;
+                                throughput_dir_2 = temp_dir_2_comm;
+                                Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
+                                continue;
+                              }
                               // Set the dirProbability variable
                               double old_ratio = throughput_dir_1 / throughput_dir_2;
-                              double new_ratio = temp_dir_1_through / temp_dir_2_through;
-                              Log_info("#### inside ThroughputCor; old_ratio: %ld", old_ratio);
-                              Log_info("#### inside ThroughputCor; new_ratio: %ld", new_ratio);
+                              double new_ratio = temp_dir_1_comm / temp_dir_2_comm;
+                              Log_info("#### inside ThroughputCor; old_ratio: %f", old_ratio);
+                              Log_info("#### inside ThroughputCor; new_ratio: %f", new_ratio);
                               // Calculate the change in ratio
                               double change = (new_ratio - old_ratio) / old_ratio;
                               // If the change is more than 10% then change the dirProbability variable
@@ -104,8 +129,9 @@ namespace janus
                                 // Do nothing
                               }
                               // Update the throughput
-                              throughput_dir_1 = temp_dir_1_through;
-                              throughput_dir_2 = temp_dir_2_through;
+                              Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
+                              throughput_dir_1 = temp_dir_1_comm;
+                              throughput_dir_2 = temp_dir_2_comm;
                               last_checked_time = std::chrono::system_clock::now();
                            } });
   }
@@ -591,12 +617,14 @@ namespace janus
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-    // Generate a random number between 0 and 1
+    // // Generate a random number between 0 and 1
     double randomValue = distribution(generator);
-
+    // Log_info("randomValue is: %f", randomValue);
+    // Log_info("dirProbability is: %f", dirProbability);
     if (randomValue < dirProbability)
+    // if (direction)
     {
-      Log_info("In first direction");
+      // Log_info("In first direction");
       direction = false;
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
       {
@@ -610,7 +638,7 @@ namespace janus
     else
     {
       direction = true;
-      Log_info("In second direction");
+      // Log_info("In second direction");
       for (auto &p : proxies)
       {
         auto id = p.first;

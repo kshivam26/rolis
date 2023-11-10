@@ -49,6 +49,8 @@ class PaxosServer : public TxLogServer {
   int n_accept_ = 0;
   int n_commit_ = 0;
 
+  bool first_time = true;
+
   ~PaxosServer() {
     Log_info("site par %d, loc %d: prepare %d, accept %d, commit %d", partition_id_, loc_id_, n_prepare_, n_accept_, n_commit_);
   }

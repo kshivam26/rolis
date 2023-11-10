@@ -18,7 +18,6 @@ class CoordinatorMultiPaxos : public Coordinator {
     verify(commo_ != nullptr);
     return (MultiPaxosCommo *) commo_;
   }
-  bool first_time = true;
   bool in_submission_ = false; // debug;
   bool in_prepare_ = false; // debug
   bool in_accept = false; // debug

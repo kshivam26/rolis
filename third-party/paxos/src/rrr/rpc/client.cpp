@@ -254,12 +254,9 @@ namespace rrr
         v32 v_error_code;
 
         in_ >> v_reply_xid >> v_error_code;
-        Log_info("Here inside client handle_read on line 257 on thread %d", pthread_self());
         pending_fu_l_.lock();
-        Log_info("Here inside client handle_read on line 259 on thread %d", pthread_self());
-        unordered_map<i64, Future *>::iterator
+        map<i64, Future *>::iterator
             it = pending_fu_.find(v_reply_xid.get());
-        Log_info("Here inside client handle_read on line 262 on thread %d", pthread_self());
         if (it != pending_fu_.end())
         {
           Future *fu = it->second;
@@ -311,21 +308,16 @@ namespace rrr
       Log_info("**** inside begin_request; looks like the client has gotten disconnected0 :(");
       return nullptr;
     }
-    Log_info("HERE inside begin_request on line 269 on thread %d", pthread_self());
     Future *fu = new Future(xid_counter_.next(), attr);
-    Log_info("HERE inside begin_request on line 271 on thread %d", pthread_self());
     pending_fu_l_.lock();
-    Log_info("HERE inside begin_request on line 273 on thread %d", pthread_self());
     pending_fu_[fu->xid_] = fu;
-    Log_info("HERE inside begin_request on line 275 on thread %d", pthread_self());
     pending_fu_l_.unlock();
-    // Log_info("Starting a new request with rpc_id %ld", rpc_id);
     //  check if the client gets closed in the meantime
     if (status_ != CONNECTED)
     {
       Log_info("**** inside begin_request; looks like the client has gotten disconnected :(");
       pending_fu_l_.lock();
-      unordered_map<i64, Future *>::iterator it = pending_fu_.find(fu->xid_);
+      map<i64, Future *>::iterator it = pending_fu_.find(fu->xid_);
       if (it != pending_fu_.end())
       {
         it->second->release();
