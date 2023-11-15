@@ -8,34 +8,6 @@
 
 namespace janus {
 
-// template<typename Key, typename Value>
-// class DebugMap : public std::map<Key, Value> {
-// public:
-//     using Base = std::map<Key, Value>;
-
-//     std::pair<typename Base::iterator, bool> insert(const typename Base::value_type& value) {
-//         std::cout << "Adding key: " << value.first << " to the map." << std::endl;
-//         return Base::insert(value);
-//     }
-
-//     std::pair<typename Base::iterator, bool> insert(typename Base::value_type&& value) {
-//         std::cout << "Adding key: " << value.first << " to the map." << std::endl;
-//         return Base::insert(std::move(value));
-//     }
-
-//     Value& operator[](const Key& key) {
-//         std::cout << "Accessing or adding key: " << key << " to the map." << std::endl;
-//         return Base::operator[](key);
-//     }
-
-//     Value& operator[](Key&& key) {
-//         std::cout << "Accessing or adding key: " << key << " to the map." << std::endl;
-//         return Base::operator[](std::move(key));
-//     }
-// };
-
-
-
 class Command;
 class CmdData;
 
@@ -67,7 +39,9 @@ class PaxosServer : public TxLogServer {
   map<slotid_t, shared_ptr<PaxosData>> logs_{};
 
   map<slotid_t, std::shared_ptr<rrr::Coroutine>> commit_coro{};
+  map<slotid_t, shared_ptr<IntEvent>> commit_ev{};
   vector<std::shared_ptr<rrr::Coroutine>> ready_commit_coro;
+  SpinLock commit_ev_l_;
   set<slotid_t> accepted_slots;
   ballot_t cur_epoch;
 
@@ -169,7 +143,7 @@ class PaxosServer : public TxLogServer {
 
   void RunPendingCommitCoroutine(){
     for(auto coro: ready_commit_coro){
-      // Log_info("#### PaxosServer::RunPendingCommitCoroutine; running coroutine from the ready_commit_coro vector");
+      // Log_info("#### PaxosServer::RunPendingCommitCoroutine; running coroutine from the ready_commit_coro vector; coro_id: %p", coro.get());
       coro->Continue();
     }
 
