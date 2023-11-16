@@ -13,6 +13,7 @@ class MultiPaxosCommo : public Communicator {
   uint64_t crpc_id_counter = 0;
   bool direction = false;
   std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>> cRPCEvents {};
+  SpinLock cRPCEvents_l_;
   MultiPaxosCommo() = delete;
   MultiPaxosCommo(PollMgr*);
   shared_ptr<PaxosPrepareQuorumEvent>

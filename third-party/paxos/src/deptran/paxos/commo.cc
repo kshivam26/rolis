@@ -8,6 +8,7 @@
 #include "../rcc_rpc.h"
 
 namespace janus {
+thread_local bool hasPrinted = false;
 
 MultiPaxosCommo::MultiPaxosCommo(PollMgr* poll) : Communicator(poll) {
 //  verify(poll != nullptr);
@@ -157,7 +158,7 @@ shared_ptr<PaxosAcceptQuorumEvent>
 MultiPaxosCommo::BroadcastPrepare2(parid_t par_id,
                                  shared_ptr<Marshallable> cmd,
                                  const std::function<void(MarshallDeputy, ballot_t, int)>& cb) {
-  // Log_info("**** BroadcastBulkPrepare2: i am here");
+  // Log_info("#### BroadcastBulkPrepare2: i am here");
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   int k = (n%2 == 0) ? n/2 : (n/2 + 1);
   auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, k); //marker:debug
@@ -254,11 +255,14 @@ MultiPaxosCommo::CrpcBroadcastHeartBeat(parid_t par_id,
     std::vector<BalValResult> state;
     uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
     // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
+    cRPCEvents_l_.lock();
     verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
+    cRPCEvents[crpc_id] = std::make_pair(cb, e);
+    cRPCEvents_l_.unlock();
 
     auto f = proxy->async_CrpcHeartbeat(crpc_id, md, sitesInfo_, state);
     Future::safe_release(f);
-    cRPCEvents[crpc_id] = std::make_pair(cb, e);
+
     break;
   }
   return e;
@@ -424,11 +428,18 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
                                     siteid_t leader_site_id) {
   // Log_info("**** inside CrpcBroadcastBulkAccept, with par_id: %d", par_id);
   // Log_info("**** inside CrpcBroadcastBulkAccept, with size of cmd is: %d", sizeof(cmd));
-  static bool hasPrinted = false;  // Static variable to track if it has printed
+  // static bool hasPrinted = false;  // Static variable to track if it has printed
 
   if (!hasPrinted) {
-      Log_info("in cRPC");
+      // Log_info("in cRPC;");
+      Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
       hasPrinted = true;  // Update the static variable
+
+  //     if (std::is_same<long, i64>::value) {
+  //       std::cout << "i64 is a long\n";
+  //     } else {
+  //       std::cout << "i64 is a long long\n";
+  //     }
   }
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   int k = (n%2 == 0) ? n/2 : (n/2 + 1);
@@ -439,16 +450,29 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
 
   sitesInfo_.push_back(leader_site_id);
 
+  // // old chain topology
+  // for (auto& p : proxies) { 
+  //   auto id = p.first;
+  //   // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+  //   if (id != leader_site_id) { // #cPRC additional
+  //     sitesInfo_.push_back(id); // #cPRC additional
+  //   }                           // #cPRC additional
+  // }
+
+  // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1; par_id: %d", par_id);
+  // bi-directional chain topology 
   if (direction){
+    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-0; par_id: %d", par_id); 
     for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) {
         auto id = it->first; // Access the element through the reverse iterator
-        if (id != leader_site_id) { // #cPRC additional
-          sitesInfo_.push_back(id); // #cPRC additional
+        if (id != leader_site_id) { 
+          sitesInfo_.push_back(id);
         }
     }
   }
   else{
-    for (auto& p : proxies) { 
+    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-1; par_id: %d", par_id); 
+    for (auto& p : proxies) {
       auto id = p.first;
       // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
       if (id != leader_site_id) { // #cPRC additional
@@ -457,48 +481,34 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
     }
   }
   
+  // Log_info("#### inside CrpcBroadcastBulkAccept; cp 2; par_id: %d", par_id);
   direction = !direction;
 
   sitesInfo_.push_back(leader_site_id);
 
-  for (auto& p : proxies) {
+  verify(sitesInfo_[0] == leader_site_id); // kshivam: delete later
+
+  for (auto& p : proxies) { // kshivam: optimize later to not loop over proxies; save leader proxy in previous step
     auto proxy = (MultiPaxosProxy*) p.second;
-    // if(p.first == leader_site_id){
-    //   FutureAttr fuattr;
-    //   int st = p.first;
-    //   fuattr.callback = [e, cb, st] (Future* fu) {
-    //     i32 valid;
-    //     i32 ballot;
-    //     fu->get_reply() >> ballot >> valid;
-    //     Log_debug("Accept response received from %d site", st);
-    //     cb(ballot, valid);
-    //     e->FeedResponse(valid);
-    //   };
-    //   verify(cmd != nullptr);
-    //   MarshallDeputy md(cmd);
-    //   // Log_info("**** inside CrpcBroadcastBulkAccept, with size of md is: %d", sizeof(md));
-    //   // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
-    //   auto f = proxy->async_BulkAccept(md, fuattr);
-    //   Future::safe_release(f);
-    //   continue;
-    // }
     if(p.first == sitesInfo_[0]){    
       verify(cmd != nullptr);
       MarshallDeputy md(cmd);
       // Log_info("**** inside CrpcBroadcastBulkAccept, with size of md is: %d", sizeof(md));
       std::vector<BalValResult> state;
-      int sizeA = sizeof(&e);
-      int sizeB = sizeof(uint64_t);
-      verify(sizeA == sizeB);
+      // int sizeA = sizeof(&e);
+      // int sizeB = sizeof(uint64_t);
+      // verify(sizeA == sizeB);
       uint64_t crpc_id = ++crpc_id_counter;
       // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
       // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
       // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
+      cRPCEvents_l_.lock();
       verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
       cRPCEvents[crpc_id] = std::make_pair(cb, e);
+      cRPCEvents_l_.unlock();
       auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
       Future::safe_release(f);
-    break;
+      break;
     }
   }
   return e;
@@ -516,10 +526,12 @@ void MultiPaxosCommo::CrpcBulkAccept(parid_t par_id,
   for (auto& p : proxies){
     if(p.first == recv_id){
       auto proxy = (MultiPaxosProxy*) p.second;
+      // Log_info("#### sending crpcBulkAccept request; par_id: %d", par_id);
       auto f = proxy->async_CrpcBulkAccept(id, cmd, addrChain, state);
-
+      if (f == nullptr) {
+            // Log_info("############################ UNLIKELY, future is nullptr");
+        }
       Future::safe_release(f);
-
       break;
     }
   }
