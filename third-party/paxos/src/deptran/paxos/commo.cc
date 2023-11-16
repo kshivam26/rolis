@@ -26,60 +26,11 @@ namespace janus
                               Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
                               auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
                               ev->Wait();
-                              if (crpc_id_to_dir.size() == 0)
-                              {
-                                Log_info("#### inside ThroughputCor; crpc_id_to_dir.size() == 0");
-                                continue;
-                              }
-                              double temp_dir_1_comm = 0;
-                              double temp_dir_2_comm = 0;
-                              // Iterate over all crpc_ids and check if they are more than a 1 second old, 
-                              // if yes then delete them and calculate throughput with the others
-                              auto now = std::chrono::system_clock::now();
-                              auto start_it = crpc_id_to_start_time.begin();
-                              for (; start_it != crpc_id_to_start_time.end();)
-                              {
-                                Log_info("#### inside ThroughputCor; crpc_id_to_start_time.size(): %d", crpc_id_to_start_time.size());
-                                auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - start_it->second);
-                                if (diff.count() > 1)
-                                {
-                                  Log_info("#### inside ThroughputCor; deleting crpc_id: %ld", start_it->first);
-                                  auto crpc_id = start_it->first;
-                                  crpc_id_to_start_time.erase(start_it++);
-                                  crpc_id_to_end_time.erase(crpc_id);
-                                  crpc_id_to_dir.erase(crpc_id);
-                                }
-                                else
-                                {
-                                  // Get direction of the crpc_id and add it to the corresponding throughput
-                                  auto crpc_id = start_it->first;
-                                  auto dir = crpc_id_to_dir[crpc_id];
-                                  if (crpc_id_to_end_time.find(crpc_id) == crpc_id_to_end_time.end())
-                                  {
-                                    Log_info("#### inside ThroughputCor; crpc_id_to_end_time.find(crpc_id) == crpc_id_to_end_time.end()");
-                                    ++start_it;
-                                    continue;
-                                  }
-                                  if (dir)
-                                  {
-                                    Log_info("#### inside ThroughputCor; adding to dir 1");
-                                    temp_dir_1_comm = temp_dir_1_comm + 1;
-                                  }
-                                  else
-                                  {
-                                    Log_info("#### inside ThroughputCor; adding to dir 2");
-                                    temp_dir_2_comm = temp_dir_2_comm + 1;
-                                  }
-                                  ++start_it;
-                                }
-                              }
-                              // now = std::chrono::system_clock::now();
-                              // Log_info("#### inside ThroughputCor; now: %ld", now.time_since_epoch().count());
-                              // Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
-                              // auto diff = std::chrono::duration_cast<std::chrono::microseconds>(now - last_checked_time);
-                              // Log_info("#### inside ThroughputCor; diff.count(): %ld", diff.count());
-                              // double temp_dir_1_through = temp_dir_1_comm / diff.count();
-                              // double temp_dir_2_through = temp_dir_2_comm / diff.count();
+                              // Call throughput calculator to get these numbers
+                              auto diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_checked_time).count();
+                              double temp_dir_1_comm = dir_to_throughput_calculator[0].get_throughput(diff);
+                              double temp_dir_2_comm = dir_to_throughput_calculator[1].get_throughput(diff);
+
                               Log_info("#### inside ThroughputCor; temp_dir_1_through: %f", temp_dir_1_comm);
                               Log_info("#### inside ThroughputCor; temp_dir_2_through: %f", temp_dir_2_comm);
                               if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
@@ -114,13 +65,11 @@ namespace janus
                               if (change > 0.1)
                               {
                                 Log_info("#### inside ThroughputCor; change > 0.1");
-                                // Get minimum of 1 and dirProbability + 0.1
                                 dirProbability = std::min(1.0, dirProbability + 0.1);
                               }
                               else if (change < -0.1)
                               {
                                 Log_info("#### inside ThroughputCor; change < -0.1");
-                                // Get maximum of 0 and dirProbability - 0.1
                                 dirProbability = std::max(0.0, dirProbability - 0.1);
                               }
                               else 
@@ -672,8 +621,14 @@ namespace janus
         // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
         cRPCEvents_l_.lock();
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
-        crpc_id_to_dir[crpc_id] = direction;
-        crpc_id_to_start_time[crpc_id] = std::chrono::system_clock::now();
+        if (direction)
+        {
+          dir_to_crpc_ids[0].insert(crpc_id);
+        }
+        else
+        {
+          dir_to_crpc_ids[1].insert(crpc_id);
+        }
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);

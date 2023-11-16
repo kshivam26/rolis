@@ -625,6 +625,19 @@ namespace janus
       auto ev = x->cRPCEvents[id]; // imagine this to be a pair
       x->cRPCEvents.erase(id);
       x->cRPCEvents_l_.unlock();
+      // Check this id in dir_to_crpc_ids
+      if (x->dir_to_crpc_ids[0].find(id) != x->dir_to_crpc_ids[0].end())
+      {
+        x->dir_to_throughput_calculator[0].add_request_end_time();
+      }
+      else if (x->dir_to_crpc_ids[1].find(id) != x->dir_to_crpc_ids[1].end())
+      {
+        x->dir_to_throughput_calculator[1].add_request_end_time();
+      }
+      else
+      {
+        // ????
+      }
       // Log_info("#### OnCrpcBulkAccept; size of the state is: %d with crpc_id: %ld", state.size(), id);
       int start_index = ev.second->n_voted_yes_ + ev.second->n_voted_no_;
       verify(start_index == 0);
