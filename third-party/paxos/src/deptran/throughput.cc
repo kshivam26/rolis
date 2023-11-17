@@ -20,6 +20,7 @@ namespace janus
             }
         }
         request_end_times_.clear();
+        Log_info("Number of requests in the last %f seconds: %f", time_difference, num_requests);
         return num_requests / time_difference;
     };
 

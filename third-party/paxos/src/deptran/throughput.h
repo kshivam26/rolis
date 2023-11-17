@@ -6,7 +6,7 @@ namespace janus
     {
     public:
         // Constructor
-        ThroughputCalculator() = delete;
+        ThroughputCalculator() = default;
         // variables
         vector<std::chrono::system_clock::time_point> request_end_times_;
         // functions

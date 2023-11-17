@@ -27,9 +27,10 @@ namespace janus
                               auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
                               ev->Wait();
                               // Call throughput calculator to get these numbers
-                              auto diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_checked_time).count();
-                              double temp_dir_1_comm = dir_to_throughput_calculator[0].get_throughput(diff);
-                              double temp_dir_2_comm = dir_to_throughput_calculator[1].get_throughput(diff);
+                              // auto diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_checked_time).count();
+                              // Log_info("#### inside ThroughputCor; diff: %ld", diff);
+                              double temp_dir_1_comm = dir_to_throughput_calculator[0].get_throughput(1000000);
+                              double temp_dir_2_comm = dir_to_throughput_calculator[1].get_throughput(1000000);
 
                               Log_info("#### inside ThroughputCor; temp_dir_1_through: %f", temp_dir_1_comm);
                               Log_info("#### inside ThroughputCor; temp_dir_2_through: %f", temp_dir_2_comm);
@@ -540,11 +541,24 @@ namespace janus
     // Log_info("**** inside CrpcBroadcastBulkAccept, with par_id: %d", par_id);
     // Log_info("**** inside CrpcBroadcastBulkAccept, with size of cmd is: %d", sizeof(cmd));
     // static bool hasPrinted = false;  // Static variable to track if it has printed
-
+    if (dir_to_throughput_calculator.size() == 0)
+    {
+      auto throughput_calculator_dir_1 = ThroughputCalculator();
+      auto throughput_calculator_dir_2 = ThroughputCalculator();
+      dir_to_throughput_calculator.push_back(throughput_calculator_dir_1);
+      dir_to_throughput_calculator.push_back(throughput_calculator_dir_2);
+    }
+    if (dir_to_crpc_ids.size() == 0)
+    {
+      set<uint64_t> crpc_ids_dir_1;
+      set<uint64_t> crpc_ids_dir_2;
+      dir_to_crpc_ids.push_back(crpc_ids_dir_1);
+      dir_to_crpc_ids.push_back(crpc_ids_dir_2);
+    }
     if (!hasPrinted)
     {
       // Log_info("in cRPC;");
-      Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
+      // Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
       hasPrinted = true; // Update the static variable
 
       //     if (std::is_same<long, i64>::value) {

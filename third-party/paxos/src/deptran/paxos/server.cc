@@ -19,8 +19,8 @@ namespace janus
                               const function<void()> &cb)
   {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
-    Log_info("multi-paxos scheduler receives prepare for slot_id: %llx",
-             slot_id);
+    // Log_info("multi-paxos scheduler receives prepare for slot_id: %llx",
+    //          slot_id);
     auto instance = GetInstance(slot_id);
     verify(ballot != instance->max_ballot_seen_);
     if (instance->max_ballot_seen_ < ballot)
@@ -206,7 +206,6 @@ namespace janus
     if (hb_log->leader_id == 1 && es->machine_id == 2)
       Log_debug("OnHeartbeat: received heartbeat from machine is %d %d", hb_log->leader_id, es->leader_id);
     // Log_info("#### OnHeartbeat: received heartbeat from machine is %d %d", hb_log->leader_id, es->leader_id);
-    Log_info("OnHeartbeat: received heartbeat from machine is %d %d", hb_log->leader_id, es->leader_id);
     if (hb_log->epoch == es->cur_epoch)
     {
       if (hb_log->leader_id != es->leader_id)
@@ -596,7 +595,6 @@ namespace janus
       Log_debug("multi-paxos scheduler accept for slot: %ld, par_id: %d", cur_slot, partition_id_);
     // es->state_unlock();
     cb();
-    Log_info("multi-paxos scheduler accept for slot: %ld, par_id: %d", cur_slot, partition_id_);
     // if (toRunCoro){
     //   // Log_info("#### inside PaxosServer::OnBulkAccept; par_id: %d, slot_id: %ld, continuing commit coroutine", partition_id_, cur_slot);
     //   toRunCoro->Continue();
@@ -614,6 +612,11 @@ namespace janus
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);
       auto x = (MultiPaxosCommo *)(this->commo_);
+      if (first_time)
+      {
+        x->ThroughputCheck();
+        first_time = false;
+      }
       // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
       x->cRPCEvents_l_.lock();
       if (x->cRPCEvents.find(id) == x->cRPCEvents.end())
@@ -646,7 +649,6 @@ namespace janus
       {
         auto el = state[i];
         // Log_info("#### OnCrpcBulkAccept; inside the last link in the chain with crpc_id: %ld; el.ballot: %d, el.valid: %d", id, el.ballot, el.valid);
-        Log_info("#### OnCrpcBulkAccept; inside the last link in the chain with crpc_id: %ld; el.ballot:%d, el.valid:%d", id, el.ballot, el.valid);
         ev.first(el.ballot, el.valid);
         ev.second->FeedResponse(el.valid);
       }
@@ -696,7 +698,7 @@ namespace janus
     // if (st.size() >= k && this->NotEndCmd(const_cast<MarshallDeputy&>(cmd).sp_data_)){ //kshivam, maybe change it later, hacky to check if it is end signal
 
     // // kshivam-issue: uncomment later
-    Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 0, crpc_id: %ld; value of k: %d", id, k);
+    // Log_info("#### PaxosServer::OnCrpcBulkAccept; cp 0, crpc_id: %ld; value of k: %d", id, k);
     if (st.size() >= k)
     { // kshivam: since have added a coroutine sleep, may not need this check
       auto temp_addrChain = vector<uint16_t>{addrChainCopy.back()};
