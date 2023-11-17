@@ -79,7 +79,7 @@ namespace janus
                               else if (change < -0.1)
                               {
                                 dir_l_.lock();
-                                dirProbability = std::max(0.0, dirProbability - 0.1);
+                                dirProbability = std::max(0.0, dirProbability + normalized_change);
                                 dir_l_.unlock();
                               }
                               else 
