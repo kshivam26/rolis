@@ -19,9 +19,10 @@ namespace janus
     double throughput_dir_1 = 1;
     double throughput_dir_2 = 1;
     double dirProbability = 0.5;
+    SpinLock dir_l_;
     std::chrono::system_clock::time_point last_checked_time;
     vector<set<uint64_t>> dir_to_crpc_ids;
-    vector<ThroughputCalculator> dir_to_throughput_calculator;
+    vector<shared_ptr<ThroughputCalculator>> dir_to_throughput_calculator;
     std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>>
         cRPCEvents{};
     SpinLock cRPCEvents_l_;

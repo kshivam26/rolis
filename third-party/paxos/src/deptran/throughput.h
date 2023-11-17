@@ -9,6 +9,7 @@ namespace janus
         ThroughputCalculator() = default;
         // variables
         vector<std::chrono::system_clock::time_point> request_end_times_;
+        SpinLock request_end_times_l_;
         // functions
         void add_request_end_time();
         double get_throughput(double time_difference);

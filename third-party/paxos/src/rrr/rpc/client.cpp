@@ -255,8 +255,7 @@ namespace rrr
 
         in_ >> v_reply_xid >> v_error_code;
         pending_fu_l_.lock();
-        map<i64, Future *>::iterator
-            it = pending_fu_.find(v_reply_xid.get());
+        auto it = pending_fu_.find(v_reply_xid.get());
         if (it != pending_fu_.end())
         {
           Future *fu = it->second;
@@ -317,7 +316,7 @@ namespace rrr
     {
       Log_info("**** inside begin_request; looks like the client has gotten disconnected :(");
       pending_fu_l_.lock();
-      map<i64, Future *>::iterator it = pending_fu_.find(fu->xid_);
+      auto it = pending_fu_.find(fu->xid_);
       if (it != pending_fu_.end())
       {
         it->second->release();

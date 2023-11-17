@@ -23,55 +23,64 @@ namespace janus
                          {
                            while (true)
                            {
-                              Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
+                              // Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
                               auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
                               ev->Wait();
                               // Call throughput calculator to get these numbers
-                              // auto diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_checked_time).count();
+                              auto diff = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - last_checked_time).count();
                               // Log_info("#### inside ThroughputCor; diff: %ld", diff);
-                              double temp_dir_1_comm = dir_to_throughput_calculator[0].get_throughput(1000000);
-                              double temp_dir_2_comm = dir_to_throughput_calculator[1].get_throughput(1000000);
+                              double temp_dir_1_comm = dir_to_throughput_calculator[0]->get_throughput(diff);
+                              double temp_dir_2_comm = dir_to_throughput_calculator[1]->get_throughput(diff);
 
                               Log_info("#### inside ThroughputCor; temp_dir_1_through: %f", temp_dir_1_comm);
                               Log_info("#### inside ThroughputCor; temp_dir_2_through: %f", temp_dir_2_comm);
                               if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
                               {
                                 Log_info("#### inside ThroughputCor; temp_dir_1_comm == 0 && temp_dir_2_comm == 0");
+                                last_checked_time = std::chrono::system_clock::now();
                                 continue;
                               }
                               if (temp_dir_1_comm == 0)
                               {
-                                dirProbability = dirProbability - 0.1;
-                                throughput_dir_1 = temp_dir_1_comm;
-                                throughput_dir_2 = temp_dir_2_comm;
+                                dir_l_.lock();
+                                dirProbability = std::max(0.0, dirProbability - 0.1);
+                                dir_l_.unlock();
+                                // throughput_dir_1 = 1;
+                                // throughput_dir_2 = temp_dir_2_comm;
                                 Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
+                                last_checked_time = std::chrono::system_clock::now();
                                 continue;
                               }
                               if (temp_dir_2_comm == 0)
                               {
-                                dirProbability = dirProbability + 0.1;
-                                throughput_dir_1 = temp_dir_1_comm;
-                                throughput_dir_2 = temp_dir_2_comm;
+                                dir_l_.lock();
+                                dirProbability = std::min(1.0, dirProbability + 0.1);
+                                dir_l_.unlock();
+                                // throughput_dir_1 = temp_dir_1_comm;
+                                // throughput_dir_2 = 1;
                                 Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
+                                last_checked_time = std::chrono::system_clock::now();
                                 continue;
                               }
-                              // Set the dirProbability variable
                               double old_ratio = throughput_dir_1 / throughput_dir_2;
                               double new_ratio = temp_dir_1_comm / temp_dir_2_comm;
-                              Log_info("#### inside ThroughputCor; old_ratio: %f", old_ratio);
                               Log_info("#### inside ThroughputCor; new_ratio: %f", new_ratio);
-                              // Calculate the change in ratio
+                              Log_info("#### inside ThroughputCor; old_ratio: %f", old_ratio);
                               double change = (new_ratio - old_ratio) / old_ratio;
-                              // If the change is more than 10% then change the dirProbability variable
+                              double normalized_change = (new_ratio - old_ratio) / new_ratio;
+                              Log_info("#### inside ThroughputCor; change: %f", change);
+                              Log_info("#### inside ThroughputCor; normalized_change: %f", normalized_change);  
                               if (change > 0.1)
                               {
-                                Log_info("#### inside ThroughputCor; change > 0.1");
-                                dirProbability = std::min(1.0, dirProbability + 0.1);
+                                dir_l_.lock();
+                                dirProbability = std::min(1.0, dirProbability + normalized_change);
+                                dir_l_.unlock();
                               }
                               else if (change < -0.1)
                               {
-                                Log_info("#### inside ThroughputCor; change < -0.1");
+                                dir_l_.lock();
                                 dirProbability = std::max(0.0, dirProbability - 0.1);
+                                dir_l_.unlock();
                               }
                               else 
                               {
@@ -543,8 +552,8 @@ namespace janus
     // static bool hasPrinted = false;  // Static variable to track if it has printed
     if (dir_to_throughput_calculator.size() == 0)
     {
-      auto throughput_calculator_dir_1 = ThroughputCalculator();
-      auto throughput_calculator_dir_2 = ThroughputCalculator();
+      auto throughput_calculator_dir_1 = make_shared<ThroughputCalculator>();
+      auto throughput_calculator_dir_2 = make_shared<ThroughputCalculator>();
       dir_to_throughput_calculator.push_back(throughput_calculator_dir_1);
       dir_to_throughput_calculator.push_back(throughput_calculator_dir_2);
     }
@@ -584,9 +593,11 @@ namespace janus
     double randomValue = distribution(generator);
     // Log_info("randomValue is: %f", randomValue);
     // Log_info("dirProbability is: %f", dirProbability);
+    dir_l_.lock();
     if (randomValue < dirProbability)
     // if (direction)
     {
+      dir_l_.unlock();
       // Log_info("In first direction");
       direction = false;
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
@@ -600,6 +611,7 @@ namespace janus
     }
     else
     {
+      dir_l_.unlock();
       direction = true;
       // Log_info("In second direction");
       for (auto &p : proxies)

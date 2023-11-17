@@ -631,11 +631,11 @@ namespace janus
       // Check this id in dir_to_crpc_ids
       if (x->dir_to_crpc_ids[0].find(id) != x->dir_to_crpc_ids[0].end())
       {
-        x->dir_to_throughput_calculator[0].add_request_end_time();
+        x->dir_to_throughput_calculator[0]->add_request_end_time();
       }
       else if (x->dir_to_crpc_ids[1].find(id) != x->dir_to_crpc_ids[1].end())
       {
-        x->dir_to_throughput_calculator[1].add_request_end_time();
+        x->dir_to_throughput_calculator[1]->add_request_end_time();
       }
       else
       {
