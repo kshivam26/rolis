@@ -57,8 +57,18 @@ namespace janus
 
         double get_throughput(uint64_t direction);
 
+        void init_directions(int num_directions)
+        {
+            init_throughput_calculator(num_directions);
+            init_throughput_store(num_directions);
+        }
+
         void init_throughput_calculator(int num_directions)
         {
+            if (dir_to_throughput_calculator.size() != 0)
+            {
+                return;
+            }
             for (int i = 0; i < num_directions; i++)
             {
                 dir_to_throughput_calculator.push_back(make_shared<ThroughputCalculator>());
@@ -67,6 +77,10 @@ namespace janus
 
         void init_throughput_store(int num_directions)
         {
+            if (dir_to_throughput_store.size() != 0)
+            {
+                return;
+            }
             for (int i = 0; i < num_directions; i++)
             {
                 ThroughputStore store;

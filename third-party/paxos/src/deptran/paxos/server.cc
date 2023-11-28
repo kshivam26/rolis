@@ -612,11 +612,11 @@ namespace janus
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);
       auto x = (MultiPaxosCommo *)(this->commo_);
-      if (first_time)
-      {
-        x->throughput_manager->calc_throughput();
-        first_time = false;
-      }
+      // if (first_time)
+      // {
+      //   x->throughput_manager->calc_throughput();
+      //   first_time = false;
+      // }
       // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
       x->cRPCEvents_l_.lock();
       if (x->cRPCEvents.find(id) == x->cRPCEvents.end())
@@ -630,7 +630,7 @@ namespace janus
       x->cRPCEvents_l_.unlock();
 
       auto current_throughput_probe_status = x->throughput_manager->get_throughput_probe();
-      if (current_throughput_probe_status == THROUGHPUT_STATUS_END || current_throughput_probe_status == THROUGHPUT_STATUS_START)
+      if (current_throughput_probe_status == THROUGHPUT_STATUS_INIT || current_throughput_probe_status == THROUGHPUT_STATUS_START)
       {
         Log_debug("Current_throughput_probe_status: %d, crpc_id: %ld", current_throughput_probe_status, id);
         x->throughput_manager->add_request_end_time(id);

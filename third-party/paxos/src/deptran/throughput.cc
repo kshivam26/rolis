@@ -4,17 +4,8 @@ namespace janus
 {
     void ThroughPutManager::add_request_start_time(uint64_t crpc_id, uint64_t direction)
     {
-        Log_info("add_request_start_time");
-        if (dir_to_throughput_calculator.size() == 0)
-        {
-            Log_info("Initializing throughput calculator 10");
-            init_throughput_calculator(2);
-        }
-        if (dir_to_throughput_store.size() == 0)
-        {
-            Log_info("Initializing throughput store 15");
-            init_throughput_store(2);
-        }
+        Log_info("Adding start time for crpc_id %lu and direction %lu", crpc_id, direction);
+        init_directions(2);
         if (get_throughput_probe() == THROUGHPUT_STATUS_END)
         {
             return;
@@ -23,13 +14,13 @@ namespace janus
         {
             dir_to_throughput_store[direction].crpc_id = crpc_id;
             dir_to_throughput_store[direction].start_time = chrono::system_clock::now();
-            if (get_throughput_probe() == THROUGHPUT_STATUS_INIT)
+            if (get_throughput_probe() == THROUGHPUT_STATUS_INVALID)
+            {
+                set_throughput_probe(THROUGHPUT_STATUS_INIT);
+            }
+            else if (get_throughput_probe() == THROUGHPUT_STATUS_INIT)
             {
                 set_throughput_probe(THROUGHPUT_STATUS_START);
-            }
-            else if (get_throughput_probe() == THROUGHPUT_STATUS_START)
-            {
-                set_throughput_probe(THROUGHPUT_STATUS_END);
             }
         }
         else
@@ -41,8 +32,8 @@ namespace janus
 
     void ThroughPutManager::add_request_end_time(uint64_t crpc_id)
     {
-        Log_info("add_request_end_time");
-        if (get_throughput_probe() == THROUGHPUT_STATUS_INIT)
+        Log_info("Adding end time for crpc_id %lu", crpc_id);
+        if (get_throughput_probe() == THROUGHPUT_STATUS_INVALID)
         {
             return;
         }
@@ -51,13 +42,18 @@ namespace janus
             Log_debug("COUNTER %d", i);
             if (dir_to_throughput_store[i].crpc_id == crpc_id)
             {
-                Log_info("add_request_END_TIME for crpc_id %lu", crpc_id);
+                Log_info("Found crpc_id %lu", crpc_id);
                 dir_to_throughput_store[i].end_time = chrono::system_clock::now();
-                Log_info("HERE AT 36");
                 dir_to_throughput_calculator[i]->add_request_times(dir_to_throughput_store[i].start_time, dir_to_throughput_store[i].end_time);
-                Log_info("HERE AT 38");
                 dir_to_throughput_store[i].crpc_id = 0;
-                Log_info("HERE AT 40");
+                if (get_throughput_probe() == THROUGHPUT_STATUS_INIT)
+                {
+                    set_throughput_probe(THROUGHPUT_STATUS_START);
+                }
+                else if (get_throughput_probe() == THROUGHPUT_STATUS_START)
+                {
+                    set_throughput_probe(THROUGHPUT_STATUS_END);
+                }
                 return;
             }
         }
@@ -85,21 +81,19 @@ namespace janus
                              {
             while (true)
             {
-                set_throughput_probe(THROUGHPUT_STATUS_INIT);
-                Log_info("Waiting for 1 second");
-                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
-                ev->Wait();
-                Log_info("WAIT FINISH");
-                if (dir_to_throughput_store.size() == 0)
+                if (get_throughput_probe() != THROUGHPUT_STATUS_END)
                 {
-                    Log_info("Initializing throughput store 87");
-                    init_throughput_store(2);
+                    continue;
                 }
                 if (dir_to_throughput_calculator.size() == 0)
                 {
-                    Log_info("Initializing throughput calculator at 92");
-                    init_throughput_calculator(2);
+                    continue;
                 }
+                set_throughput_probe(THROUGHPUT_STATUS_INVALID);
+                Log_info("Waiting for 1 second");
+                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
+                ev->Wait();
+                Log_info("Waiting Finshed");
                 for (int i = 0; i < dir_to_throughput_calculator.size(); i++)
                 {
                     Log_info("Calculating throughput for direction %d", i);

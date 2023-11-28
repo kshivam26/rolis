@@ -603,7 +603,7 @@ namespace janus
         // verify(sizeA == sizeB);
         uint64_t crpc_id = ++crpc_id_counter;
         auto current_throughput_probe_status = throughput_manager->get_throughput_probe();
-        if (current_throughput_probe_status != THROUGHPUT_STATUS_INVALID && current_throughput_probe_status != THROUGHPUT_STATUS_END)
+        if (current_throughput_probe_status == THROUGHPUT_STATUS_INVALID || current_throughput_probe_status == THROUGHPUT_STATUS_INIT)
         {
           // Mark this crpc_id in the store based on direction
           if (direction)
