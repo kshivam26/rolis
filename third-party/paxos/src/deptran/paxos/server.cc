@@ -363,9 +363,16 @@ void PaxosServer::OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
   }
   //es->state_unlock();
   Log_debug("OnBulkPrepare2: instance found, Preparing response");
-  ret_cmd->ballots.push_back(instance->max_ballot_accepted_);
-  ret_cmd->slots.push_back(cur_slot);
-  ret_cmd->cmds.push_back(make_shared<MarshallDeputy>(instance->accepted_cmd_));
+  // kshivam-tp: maybe change it back?
+  if (instance->max_ballot_accepted_ != cur_b){
+    Log_info("OnBulkPrepare2: instance found, Preparing response");
+    ret_cmd->ballots.push_back(instance->max_ballot_accepted_);
+    ret_cmd->slots.push_back(cur_slot);
+    ret_cmd->cmds.push_back(make_shared<MarshallDeputy>(instance->accepted_cmd_));
+  }
+  // else {
+  //   // Log_info("#### OnBulkPrepare2: cp2");
+  // }
   mtx_.unlock();
   cb();
 }
@@ -549,7 +556,7 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
   // Log_info("#### inside paxosServer::OnCrpcBulkAccept, with par_id: %d, crpc_id: %ld;", par_id, id);  
   if (addrChain.size() == 1)
     {
-        // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);  
+        Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , cmd size is: %ld, with par_id: %d, crpc_id: %ld;", cmd.sp_data_->EntitySize(), par_id, id);  
         auto x = (MultiPaxosCommo *)(this->commo_);
         // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
         x->cRPCEvents_l_.lock();
@@ -605,10 +612,12 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
     if (chain_size == 1){
       auto sp_cmd = make_shared<LogEntry>();
       // Log_info("#### checkpoint check check check with crpc_id: %ld", id);
+      // kshivam-tp: uncomment later; saw outgoing data on the slow node; wasn't sure what that was, so commented below
+      // however, could still see the outgoing data to be in gbps uncommenting
       MarshallDeputy ph(sp_cmd);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[0], id,
                                                           ph, addrChainCopy, st);
-      // Log_info("#### PaxosServer::OnCrpcBulkAccept; last follower in chain, sending response back to leader, par_id: %d, crpc_id: %ld", par_id, id);
+      Log_info("#### PaxosServer::OnCrpcBulkAccept; last follower in chain, sending response back to leader, cmd size is: %ld; par_id: %d, crpc_id: %ld",  sp_cmd->EntitySize(), par_id, id);
       return;
     }
 
@@ -622,9 +631,13 @@ void PaxosServer::OnCrpcBulkAccept(const uint64_t& id,
     // // kshivam-issue: uncomment later
     if (st.size() >= k){ // kshivam: since have added a coroutine sleep, may not need this check
       auto temp_addrChain = vector<uint16_t>{addrChainCopy.back()};
-      // Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
+      auto sp_cmd = make_shared<LogEntry>();
+      Log_info("#### PaxosServer::OnCrpcBulkAccept; cmd size is: %ld, sp_cmd size is: %ld", cmd.sp_data_->EntitySize(), sp_cmd->EntitySize());
+      // Log_info("#### checkpoint check check check with crpc_id: %ld", id);
+      MarshallDeputy ph(sp_cmd);
+      Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[chain_size-1], id,
-                                                          cmd, temp_addrChain, st);
+                                                          ph, temp_addrChain, st);
       // Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sent response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
     }
 
@@ -925,12 +938,17 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
       //auto x = new PaxosData();
       // Log_info("calling app_next for par_id: %d, slot_id: %d", partition_id_, commit_exec[i]->committed_cmd_);
       // auto& check = dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length;
-      if (dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
-        // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
-        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(100000); // kshivam; may result in error, because still the requests may not have been processed completely.
+      if (this->leader_id != this->loc_id_ && dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
+        Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
+        *valid = 1;
+        cb();
+        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(10000000); // kshivam; may result in error, because still the requests may not have been processed completely.
         commit_wait_event->Wait();
-        // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);
+        Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);
+        app_next_(*commit_exec[i]->committed_cmd_);
+        return;
       }
+      
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
   }
 
