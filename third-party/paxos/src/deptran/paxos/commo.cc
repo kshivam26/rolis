@@ -14,85 +14,63 @@ namespace janus
   MultiPaxosCommo::MultiPaxosCommo(PollMgr *poll) : Communicator(poll)
   {
     //  verify(poll != nullptr);
-    this->last_checked_time = std::chrono::system_clock::now();
+    throughput_manager = make_shared<ThroughPutManager>();
   }
 
-  void MultiPaxosCommo::ThroughputCheck()
+  double MultiPaxosCommo::getDirProbability()
   {
-    Coroutine::CreateRun([this]()
-                         {
-                           while (true)
-                           {
-                              // Log_info("#### inside ThroughputCor; last_checked_time: %ld", last_checked_time.time_since_epoch().count());
-                              auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
-                              ev->Wait();
-                              // Call throughput calculator to get these numbers
-                              auto diff = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - last_checked_time).count();
-                              // Log_info("#### inside ThroughputCor; diff: %ld", diff);
-                              double temp_dir_1_comm = dir_to_throughput_calculator[0]->get_throughput(diff);
-                              double temp_dir_2_comm = dir_to_throughput_calculator[1]->get_throughput(diff);
-
-                              Log_info("#### inside ThroughputCor; temp_dir_1_through: %f", temp_dir_1_comm);
-                              Log_info("#### inside ThroughputCor; temp_dir_2_through: %f", temp_dir_2_comm);
-                              if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
-                              {
-                                Log_info("#### inside ThroughputCor; temp_dir_1_comm == 0 && temp_dir_2_comm == 0");
-                                last_checked_time = std::chrono::system_clock::now();
-                                continue;
-                              }
-                              if (temp_dir_1_comm == 0)
-                              {
-                                dir_l_.lock();
-                                dirProbability = std::max(0.0, dirProbability - 0.1);
-                                dir_l_.unlock();
-                                // throughput_dir_1 = 1;
-                                // throughput_dir_2 = temp_dir_2_comm;
-                                Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
-                                last_checked_time = std::chrono::system_clock::now();
-                                continue;
-                              }
-                              if (temp_dir_2_comm == 0)
-                              {
-                                dir_l_.lock();
-                                dirProbability = std::min(1.0, dirProbability + 0.1);
-                                dir_l_.unlock();
-                                // throughput_dir_1 = temp_dir_1_comm;
-                                // throughput_dir_2 = 1;
-                                Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
-                                last_checked_time = std::chrono::system_clock::now();
-                                continue;
-                              }
-                              double old_ratio = throughput_dir_1 / throughput_dir_2;
-                              double new_ratio = temp_dir_1_comm / temp_dir_2_comm;
-                              Log_info("#### inside ThroughputCor; new_ratio: %f", new_ratio);
-                              Log_info("#### inside ThroughputCor; old_ratio: %f", old_ratio);
-                              double change = (new_ratio - old_ratio) / old_ratio;
-                              double normalized_change = (new_ratio - old_ratio) / new_ratio;
-                              Log_info("#### inside ThroughputCor; change: %f", change);
-                              Log_info("#### inside ThroughputCor; normalized_change: %f", normalized_change);  
-                              if (change > 0.1)
-                              {
-                                dir_l_.lock();
-                                dirProbability = std::min(1.0, dirProbability + normalized_change);
-                                dir_l_.unlock();
-                              }
-                              else if (change < -0.1)
-                              {
-                                dir_l_.lock();
-                                dirProbability = std::max(0.0, dirProbability + normalized_change);
-                                dir_l_.unlock();
-                              }
-                              else 
-                              {
-                                Log_info("#### inside ThroughputCor; change < 0.1 and change > -0.1");
-                                // Do nothing
-                              }
-                              // Update the throughput
-                              Log_info("#### inside ThroughputCor; dirProbability: %f", dirProbability);
-                              throughput_dir_1 = temp_dir_1_comm;
-                              throughput_dir_2 = temp_dir_2_comm;
-                              last_checked_time = std::chrono::system_clock::now();
-                           } });
+    Log_info("Inside getDirProbability");
+    double ret;
+    Log_info("Getting throughput");
+    double temp_dir_1_comm = throughput_manager->get_throughput(0);
+    Log_info("Throughput 1 is: %f", temp_dir_1_comm);
+    double temp_dir_2_comm = throughput_manager->get_throughput(1);
+    Log_info("Throughput 2 is: %f", temp_dir_2_comm);
+    Log_info("Caclulating dirProbability");
+    if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
+    {
+      Log_info("Both are 0");
+      dir_l_.lock();
+      ret = dirProbability;
+      dir_l_.unlock();
+    }
+    else if (temp_dir_1_comm == 0)
+    {
+      Log_info("temp_dir_1_comm is 0");
+      dir_l_.lock();
+      dirProbability = std::max(0.0, dirProbability - 0.1);
+      ret = dirProbability;
+      dir_l_.unlock();
+    }
+    else if (temp_dir_2_comm == 0)
+    {
+      Log_info("temp_dir_2_comm is 0");
+      dir_l_.lock();
+      dirProbability = std::min(1.0, dirProbability + 0.1);
+      ret = dirProbability;
+      dir_l_.unlock();
+    }
+    else
+    {
+      if (temp_dir_1_comm > temp_dir_2_comm)
+      {
+        Log_info("temp_dir_1_comm > temp_dir_2_comm");
+        dir_l_.lock();
+        dirProbability = std::max(0.0, dirProbability - 0.1);
+        ret = dirProbability;
+        dir_l_.unlock();
+      }
+      else
+      {
+        Log_info("temp_dir_1_comm < temp_dir_2_comm");
+        dir_l_.lock();
+        dirProbability = std::min(1.0, dirProbability + 0.1);
+        ret = dirProbability;
+        dir_l_.unlock();
+      }
+    }
+    Log_info("dirProbability is: %f", ret);
+    return ret;
   }
 
   // not used
@@ -550,20 +528,7 @@ namespace janus
     // Log_info("**** inside CrpcBroadcastBulkAccept, with par_id: %d", par_id);
     // Log_info("**** inside CrpcBroadcastBulkAccept, with size of cmd is: %d", sizeof(cmd));
     // static bool hasPrinted = false;  // Static variable to track if it has printed
-    if (dir_to_throughput_calculator.size() == 0)
-    {
-      auto throughput_calculator_dir_1 = make_shared<ThroughputCalculator>();
-      auto throughput_calculator_dir_2 = make_shared<ThroughputCalculator>();
-      dir_to_throughput_calculator.push_back(throughput_calculator_dir_1);
-      dir_to_throughput_calculator.push_back(throughput_calculator_dir_2);
-    }
-    if (dir_to_crpc_ids.size() == 0)
-    {
-      set<uint64_t> crpc_ids_dir_1;
-      set<uint64_t> crpc_ids_dir_2;
-      dir_to_crpc_ids.push_back(crpc_ids_dir_1);
-      dir_to_crpc_ids.push_back(crpc_ids_dir_2);
-    }
+
     if (!hasPrinted)
     {
       // Log_info("in cRPC;");
@@ -589,15 +554,11 @@ namespace janus
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-    // // Generate a random number between 0 and 1
     double randomValue = distribution(generator);
-    // Log_info("randomValue is: %f", randomValue);
-    // Log_info("dirProbability is: %f", dirProbability);
-    dir_l_.lock();
-    if (randomValue < dirProbability)
+    auto tempDirProbability = getDirProbability();
+    if (randomValue < tempDirProbability)
     // if (direction)
     {
-      dir_l_.unlock();
       // Log_info("In first direction");
       direction = false;
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
@@ -611,7 +572,6 @@ namespace janus
     }
     else
     {
-      dir_l_.unlock();
       direction = true;
       // Log_info("In second direction");
       for (auto &p : proxies)
@@ -642,19 +602,20 @@ namespace janus
         // int sizeB = sizeof(uint64_t);
         // verify(sizeA == sizeB);
         uint64_t crpc_id = ++crpc_id_counter;
+        auto current_throughput_probe_status = throughput_manager->get_throughput_probe();
+        if (current_throughput_probe_status != THROUGHPUT_STATUS_INVALID && current_throughput_probe_status != THROUGHPUT_STATUS_END)
+        {
+          // Mark this crpc_id in the store based on direction
+          if (direction)
+            throughput_manager->add_request_start_time(crpc_id, 0);
+          else
+            throughput_manager->add_request_start_time(crpc_id, 1);
+        }
         // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
         // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
         // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
         cRPCEvents_l_.lock();
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
-        if (direction)
-        {
-          dir_to_crpc_ids[0].insert(crpc_id);
-        }
-        else
-        {
-          dir_to_crpc_ids[1].insert(crpc_id);
-        }
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);

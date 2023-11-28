@@ -614,7 +614,7 @@ namespace janus
       auto x = (MultiPaxosCommo *)(this->commo_);
       if (first_time)
       {
-        x->ThroughputCheck();
+        x->throughput_manager->calc_throughput();
         first_time = false;
       }
       // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
@@ -628,18 +628,12 @@ namespace janus
       auto ev = x->cRPCEvents[id]; // imagine this to be a pair
       x->cRPCEvents.erase(id);
       x->cRPCEvents_l_.unlock();
-      // Check this id in dir_to_crpc_ids
-      if (x->dir_to_crpc_ids[0].find(id) != x->dir_to_crpc_ids[0].end())
+
+      auto current_throughput_probe_status = x->throughput_manager->get_throughput_probe();
+      if (current_throughput_probe_status == THROUGHPUT_STATUS_END || current_throughput_probe_status == THROUGHPUT_STATUS_START)
       {
-        x->dir_to_throughput_calculator[0]->add_request_end_time();
-      }
-      else if (x->dir_to_crpc_ids[1].find(id) != x->dir_to_crpc_ids[1].end())
-      {
-        x->dir_to_throughput_calculator[1]->add_request_end_time();
-      }
-      else
-      {
-        // ????
+        Log_debug("Current_throughput_probe_status: %d, crpc_id: %ld", current_throughput_probe_status, id);
+        x->throughput_manager->add_request_end_time(id);
       }
       // Log_info("#### OnCrpcBulkAccept; size of the state is: %d with crpc_id: %ld", state.size(), id);
       int start_index = ev.second->n_voted_yes_ + ev.second->n_voted_no_;
@@ -1031,22 +1025,16 @@ namespace janus
       if (dynamic_cast<LogEntry &>(*commit_exec[i]->committed_cmd_).length == 0)
       {
         // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
-        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(100000); // kshivam; may result in error, because still the requests may not have been processed completely.
+        *valid = 1;
+        cb();
+        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(10000000); // kshivam; may result in error, because still the requests may not have been processed completely.
         commit_wait_event->Wait();
+        app_next_(*commit_exec[i]->committed_cmd_);
+        return;
         // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);
       }
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
     }
-
-    // kshivam: uncomment these lines later: *valid = 1 and cb()
-    *valid = 1;
-    // cb();
-
-    // mtx_.lock();
-    // FreeSlots();
-    // mtx_.unlock();
-    cb();
-
     // Log_debug("**** OnBulkCommit; ballot:%d, and valid: %d", *ballot, *valid);
   }
 
