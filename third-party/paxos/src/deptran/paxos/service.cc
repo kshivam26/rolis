@@ -159,24 +159,26 @@ namespace janus
                             cmd,
                             addrChain,
                             state);
-    defer->reply(); });
-  }
+    defer->reply();
+    // Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; reply sent back for crpc_id: %ld; calling RunPendingCommitCoroutine", id);
+    // sched_->RunPendingCommitCoroutine();
+    // Log_info("#### inside MultiPaxosServiceImpl::CrpcBulkAccept; done calling RunPendingCommitCoroutine");
+  });
+}
 
-  void MultiPaxosServiceImpl::BulkDecide(const MarshallDeputy &md_cmd,
-                                         i32 *ballot,
-                                         i32 *valid,
-                                         rrr::DeferredReply *defer)
-  {
-    verify(sched_ != nullptr);
-    Coroutine::CreateRun([&]()
-                         {
-                           sched_->OnBulkCommit(const_cast<MarshallDeputy &>(md_cmd).sp_data_,
-                                                ballot,
-                                                valid,
-                                                std::bind(&rrr::DeferredReply::reply, defer));
-                           // defer->reply();
-                         });
-  }
+void MultiPaxosServiceImpl::BulkDecide(const MarshallDeputy& md_cmd,
+                                       i32* ballot,
+                                       i32* valid,
+                                       rrr::DeferredReply* defer) {
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnBulkCommit(const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                         ballot,
+                         valid,
+                         std::bind(&rrr::DeferredReply::reply, defer));
+    //defer->reply();
+  });
+}
 
   // kshivam-TODO: add the code
   void MultiPaxosServiceImpl::CrpcBulkDecide(const uint64_t &id,

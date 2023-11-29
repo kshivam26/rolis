@@ -688,7 +688,7 @@ public:
   pthread_t election_th_;
   pthread_t heartbeat_th_;
   bool running = true;
-  int timeout = 3; // in seconds // kshivam modified; original timeout = 1
+  int timeout = 15; // in seconds // kshivam modified; original timeout = 1
   int heartbeat_timeout = 300; // in milliseconds
   int send_prep_anyway_timeout = 1;
   int cur_epoch = 0;
