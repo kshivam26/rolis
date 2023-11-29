@@ -32,11 +32,11 @@ namespace janus
 
     void ThroughPutManager::add_request_end_time(uint64_t crpc_id)
     {
-        Log_info("Adding end time for crpc_id %lu", crpc_id);
         if (get_throughput_probe() == THROUGHPUT_STATUS_INVALID)
         {
             return;
         }
+        Log_info("Adding end time for crpc_id %lu", crpc_id);
         for (int i = 0; i < dir_to_throughput_store.size(); i++)
         {
             Log_debug("COUNTER %d", i);
@@ -81,10 +81,10 @@ namespace janus
                              {
             while (true)
             {
-                if (get_throughput_probe() != THROUGHPUT_STATUS_END)
-                {
-                    continue;
-                }
+                // if (get_throughput_probe() != THROUGHPUT_STATUS_END)
+                // {
+                //     continue;
+                // }
                 if (dir_to_throughput_calculator.size() == 0)
                 {
                     continue;

@@ -893,7 +893,7 @@ namespace janus
     //   }
     //   if (commit_coro.size() > 1){
     //     for (auto key: commit_coro){
-    //       // Log_info("#### OnBulkCommit cp 1.3; par_id: %d, commit_coro map key: %d", partition_id_, key.first);
+    //       Log_debug("#### OnBulkCommit cp 1.3; par_id: %d, commit_coro map key: %d", partition_id_, key.first);
     //     }
     //   }
     //   coro->Yield();
@@ -1016,26 +1016,31 @@ namespace janus
     // cb();
 
     // mtx_.unlock();
-    // Log_debug("Committing %d", commit_exec.size());
-    for (int i = 0; i < commit_exec.size(); i++)
-    {
-      // auto x = new PaxosData();
-      //  Log_info("calling app_next for par_id: %d, slot_id: %d", partition_id_, commit_exec[i]->committed_cmd_);
-      //  auto& check = dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length;
-      if (dynamic_cast<LogEntry &>(*commit_exec[i]->committed_cmd_).length == 0)
-      {
-        // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
-        *valid = 1;
-        cb();
-        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(10000000); // kshivam; may result in error, because still the requests may not have been processed completely.
+    Log_debug("Committing %d", commit_exec.size());
+    for(int i = 0; i < commit_exec.size(); i++){
+      //auto x = new PaxosData();
+      // Log_debug("calling app_next for par_id: %d, slot_id: %d", partition_id_, commit_exec[i]->committed_cmd_);
+      // auto& check = dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length;
+      if (dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
+        // Log_debug("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
+        auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(100000); // kshivam; may result in error, because still the requests may not have been processed completely.
         commit_wait_event->Wait();
-        app_next_(*commit_exec[i]->committed_cmd_);
-        return;
         // Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);
       }
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
-    }
-    // Log_debug("**** OnBulkCommit; ballot:%d, and valid: %d", *ballot, *valid);
+  }
+
+  // kshivam: uncomment these lines later: *valid = 1 and cb()
+  *valid = 1;
+  //cb();
+
+  //mtx_.lock();
+  //FreeSlots();
+  //mtx_.unlock();
+  cb();
+
+  // Log_debug("#### OnBulkCommit returning; par_id: %d, ballot:%d, and valid: %d", partition_id_, *ballot, *valid);
+
   }
 
   void PaxosServer::OnCrpcBulkCommit(const uint64_t &id,
