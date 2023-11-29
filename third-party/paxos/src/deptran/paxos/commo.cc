@@ -14,63 +14,56 @@ namespace janus
   MultiPaxosCommo::MultiPaxosCommo(PollMgr *poll) : Communicator(poll)
   {
     //  verify(poll != nullptr);
-    throughput_manager = make_shared<ThroughPutManager>();
+    dir_throughput_cal = make_shared<DirectionThroughput>();
+    last_checked_time = chrono::system_clock::now();
   }
 
   double MultiPaxosCommo::getDirProbability()
   {
-    Log_info("Inside getDirProbability");
-    double ret;
-    Log_info("Getting throughput");
-    double temp_dir_1_comm = throughput_manager->get_throughput(0);
-    Log_info("Throughput 1 is: %f", temp_dir_1_comm);
-    double temp_dir_2_comm = throughput_manager->get_throughput(1);
-    Log_info("Throughput 2 is: %f", temp_dir_2_comm);
-    Log_info("Caclulating dirProbability");
-    if (temp_dir_1_comm == 0 && temp_dir_2_comm == 0)
+    auto now = chrono::system_clock::now();
+    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 1)
     {
-      Log_info("Both are 0");
-      dir_l_.lock();
-      ret = dirProbability;
-      dir_l_.unlock();
+      Log_info("dirProbability without calculation is: %f", dirProbability);
+      return dirProbability;
     }
-    else if (temp_dir_1_comm == 0)
+    dir_l_.lock();
+    // Log_info("Getting throughput");
+    double temp_dir_1_lat = dir_throughput_cal->get_latency(0);
+    // Log_info("Throughput 1 is: %f", temp_dir_1_comm);
+    double temp_dir_2_lat = dir_throughput_cal->get_latency(1);
+    // Log_info("Throughput 2 is: %f", temp_dir_2_comm);
+    // Log_info("Caclulating dirProbability");
+    double diff = abs(temp_dir_1_lat - temp_dir_2_lat);
+    if (diff < 1000 || (temp_dir_1_lat == 0 && temp_dir_2_lat == 0))
     {
-      Log_info("temp_dir_1_comm is 0");
-      dir_l_.lock();
-      dirProbability = std::max(0.0, dirProbability - 0.1);
-      ret = dirProbability;
-      dir_l_.unlock();
-    }
-    else if (temp_dir_2_comm == 0)
-    {
-      Log_info("temp_dir_2_comm is 0");
-      dir_l_.lock();
-      dirProbability = std::min(1.0, dirProbability + 0.1);
-      ret = dirProbability;
-      dir_l_.unlock();
-    }
-    else
-    {
-      if (temp_dir_1_comm > temp_dir_2_comm)
+      Log_info("diff is less than 1000 or both are 0");
+      // dirProbability = 0.5;
+      if (dirProbability < 0.5)
       {
-        Log_info("temp_dir_1_comm > temp_dir_2_comm");
-        dir_l_.lock();
-        dirProbability = std::max(0.0, dirProbability - 0.1);
-        ret = dirProbability;
-        dir_l_.unlock();
+        dirProbability = std::min(0.9, dirProbability + 0.1);
       }
       else
       {
-        Log_info("temp_dir_1_comm < temp_dir_2_comm");
-        dir_l_.lock();
-        dirProbability = std::min(1.0, dirProbability + 0.1);
-        ret = dirProbability;
-        dir_l_.unlock();
+        dirProbability = std::max(0.1, dirProbability - 0.1);
       }
     }
-    Log_info("dirProbability is: %f", ret);
-    return ret;
+    else if (temp_dir_1_lat > temp_dir_2_lat)
+    {
+      Log_info("temp_dir_1_lat > temp_dir_2_lat");
+      Log_info("dirProbability - 0.1 is %f", dirProbability - 0.1);
+      dirProbability = std::max(0.1, dirProbability - 0.1);
+    }
+    else
+    {
+      Log_info("temp_dir_1_lat < temp_dir_2_lat");
+      Log_info("dirProbability + 0.1 is %f", dirProbability + 0.1);
+      dirProbability = std::min(0.9, dirProbability + 0.1);
+    }
+    Log_info("dirProbability after calculation is : %f", dirProbability);
+    double temp = dirProbability;
+    dir_l_.unlock();
+    last_checked_time = chrono::system_clock::now();
+    return temp;
   }
 
   // not used
@@ -585,6 +578,17 @@ namespace janus
       }
     }
 
+    // Normal CRPC code without directions
+    // for (auto &p : proxies)
+    // {
+    //   auto id = p.first;
+    //   // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+    //   if (id != leader_site_id)
+    //   {                           // #cPRC additional
+    //     sitesInfo_.push_back(id); // #cPRC additional
+    //   }                           // #cPRC additional
+    // }
+
     sitesInfo_.push_back(leader_site_id);
 
     verify(sitesInfo_[0] == leader_site_id); // kshivam: delete later
@@ -602,14 +606,14 @@ namespace janus
         // int sizeB = sizeof(uint64_t);
         // verify(sizeA == sizeB);
         uint64_t crpc_id = ++crpc_id_counter;
-        auto current_throughput_probe_status = throughput_manager->get_throughput_probe();
-        if (current_throughput_probe_status == THROUGHPUT_STATUS_INVALID || current_throughput_probe_status == THROUGHPUT_STATUS_INIT)
+        auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+        if (current_throughput_probe_status >= 0)
         {
           // Mark this crpc_id in the store based on direction
           if (direction)
-            throughput_manager->add_request_start_time(crpc_id, 0);
+            dir_throughput_cal->add_request_start_time(crpc_id, 0);
           else
-            throughput_manager->add_request_start_time(crpc_id, 1);
+            dir_throughput_cal->add_request_start_time(crpc_id, 1);
         }
         // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
         // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);

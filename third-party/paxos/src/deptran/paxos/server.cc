@@ -618,11 +618,11 @@ namespace janus
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);
       auto x = (MultiPaxosCommo *)(this->commo_);
-      // if (first_time)
-      // {
-      //   x->throughput_manager->calc_throughput();
-      //   first_time = false;
-      // }
+      if (first_time)
+      {
+        x->dir_throughput_cal->calc_latency();
+        first_time = false;
+      }
       // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
       x->cRPCEvents_l_.lock();
       if (x->cRPCEvents.find(id) == x->cRPCEvents.end())
@@ -635,12 +635,8 @@ namespace janus
       x->cRPCEvents.erase(id);
       x->cRPCEvents_l_.unlock();
 
-      auto current_throughput_probe_status = x->throughput_manager->get_throughput_probe();
-      if (current_throughput_probe_status == THROUGHPUT_STATUS_INIT || current_throughput_probe_status == THROUGHPUT_STATUS_START)
-      {
-        Log_debug("Current_throughput_probe_status: %d, crpc_id: %ld", current_throughput_probe_status, id);
-        x->throughput_manager->add_request_end_time(id);
-      }
+      x->dir_throughput_cal->add_request_end_time(id);
+      
       // Log_info("#### OnCrpcBulkAccept; size of the state is: %d with crpc_id: %ld", state.size(), id);
       int start_index = ev.second->n_voted_yes_ + ev.second->n_voted_no_;
       verify(start_index == 0);
@@ -689,7 +685,7 @@ namespace janus
       MarshallDeputy ph(sp_cmd);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[0], id,
                                                           ph, addrChainCopy, st);
-      Log_info("#### PaxosServer::OnCrpcBulkAccept; last follower in chain, sending response back to leader, cmd size is: %ld; par_id: %d, crpc_id: %ld",  sp_cmd->EntitySize(), par_id, id);
+      // Log_info("#### PaxosServer::OnCrpcBulkAccept; last follower in chain, sending response back to leader, cmd size is: %ld; par_id: %d, crpc_id: %ld",  sp_cmd->EntitySize(), par_id, id);
       return;
     }
 
@@ -706,10 +702,10 @@ namespace janus
     { // kshivam: since have added a coroutine sleep, may not need this check
       auto temp_addrChain = vector<uint16_t>{addrChainCopy.back()};
       auto sp_cmd = make_shared<LogEntry>();
-      Log_info("#### PaxosServer::OnCrpcBulkAccept; cmd size is: %ld, sp_cmd size is: %ld", cmd.sp_data_->EntitySize(), sp_cmd->EntitySize());
+      // Log_info("#### PaxosServer::OnCrpcBulkAccept; cmd size is: %ld, sp_cmd size is: %ld", cmd.sp_data_->EntitySize(), sp_cmd->EntitySize());
       // Log_info("#### checkpoint check check check with crpc_id: %ld", id);
       MarshallDeputy ph(sp_cmd);
-      Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
+      // Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sending response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
       ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[chain_size-1], id,
                                                           ph, temp_addrChain, st);
       // Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sent response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);

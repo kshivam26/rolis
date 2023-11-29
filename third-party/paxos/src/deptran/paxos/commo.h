@@ -19,9 +19,9 @@ namespace janus
     double dirProbability = 0.5;
     SpinLock dir_l_;
 
-    // This is hacky way to initialize these variables
-    vector<double> dir_to_throughput = {1, 1};
-    shared_ptr<ThroughPutManager> throughput_manager;
+    shared_ptr<DirectionThroughput> dir_throughput_cal;
+
+    chrono::system_clock::time_point last_checked_time;
 
     std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>>
         cRPCEvents{};

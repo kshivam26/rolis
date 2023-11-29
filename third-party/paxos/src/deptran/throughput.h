@@ -2,19 +2,11 @@
 
 namespace janus
 {
-    struct ThroughputStore
+    struct RequestData
     {
         chrono::system_clock::time_point start_time;
         chrono::system_clock::time_point end_time;
         uint64_t crpc_id;
-    };
-
-    enum ThroughputStatus
-    {
-        THROUGHPUT_STATUS_INVALID = -1,
-        THROUGHPUT_STATUS_INIT = 0,
-        THROUGHPUT_STATUS_START = 1,
-        THROUGHPUT_STATUS_END = 2,
     };
 
     class ThroughputCalculator
@@ -28,34 +20,34 @@ namespace janus
         SpinLock time_lock_;
         chrono::system_clock::time_point start_time;
         chrono::system_clock::time_point end_time;
-        double throughput;
+        double latency;
 
         void add_request_times(chrono::system_clock::time_point st_time, chrono::system_clock::time_point en_time);
 
-        void calc_throughput();
+        // void calc_latency();
 
-        double get_throughput();
+        double get_latency();
     };
 
-    class ThroughPutManager
+    class DirectionThroughput
     {
     public:
-        ThroughPutManager() = default;
-        ThroughPutManager(const ThroughPutManager &) = delete;
+        DirectionThroughput() = default;
+        DirectionThroughput(const DirectionThroughput &) = delete;
         // ~ThroughPutManager();
 
         vector<shared_ptr<ThroughputCalculator>> dir_to_throughput_calculator;
-        vector<ThroughputStore> dir_to_throughput_store;
+        vector<RequestData> dir_to_throughput_data;
 
         SpinLock throughput_probe_lock_;
-        int throughput_probe = THROUGHPUT_STATUS_INVALID;
+        int throughput_probe = -1;
 
         void add_request_start_time(uint64_t crpc_id, uint64_t direction);
         void add_request_end_time(uint64_t crpc_id);
 
-        void calc_throughput();
+        void calc_latency();
 
-        double get_throughput(uint64_t direction);
+        double get_latency(uint64_t direction);
 
         void init_directions(int num_directions)
         {
@@ -77,31 +69,41 @@ namespace janus
 
         void init_throughput_store(int num_directions)
         {
-            if (dir_to_throughput_store.size() != 0)
+            if (dir_to_throughput_data.size() != 0)
             {
                 return;
             }
             for (int i = 0; i < num_directions; i++)
             {
-                ThroughputStore store;
-                store.crpc_id = 0;
-                dir_to_throughput_store.push_back(store);
+                RequestData data;
+                data.crpc_id = 0;
+                dir_to_throughput_data.push_back(data);
             }
         }
 
-        bool get_throughput_probe()
+        int get_throughput_probe()
         {
             throughput_probe_lock_.lock();
             int probe = throughput_probe;
             throughput_probe_lock_.unlock();
             return probe;
         }
-        void set_throughput_probe(int probe)
+
+        void decrement_throughput_probe()
         {
-            Log_info("Setting throughput probe to %d", probe);
             throughput_probe_lock_.lock();
-            throughput_probe = probe;
+            Log_info("Setting throughput probe to %d", throughput_probe - 1);
+            throughput_probe--;
             throughput_probe_lock_.unlock();
         }
+
+        void reset_throughput_probe()
+        {
+            throughput_probe_lock_.lock();
+            Log_info("Resetting throughput probe");
+            throughput_probe = 1;
+            throughput_probe_lock_.unlock();
+        }
+
     };
 } // namespace janus
