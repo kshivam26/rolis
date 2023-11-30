@@ -618,11 +618,11 @@ namespace janus
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);
       auto x = (MultiPaxosCommo *)(this->commo_);
-      if (first_time)
-      {
-        x->dir_throughput_cal->calc_latency();
-        first_time = false;
-      }
+      // if (first_time)
+      // {
+      //   x->dir_throughput_cal->calc_latency();
+      //   first_time = false;
+      // }
       // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
       x->cRPCEvents_l_.lock();
       if (x->cRPCEvents.find(id) == x->cRPCEvents.end())
@@ -1036,6 +1036,8 @@ namespace janus
         Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
         *valid = 1;
         cb();
+        auto x = (MultiPaxosCommo *)(this->commo_);
+        x->dir_throughput_cal->loop_var = false;
         auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(10000000); // kshivam; may result in error, because still the requests may not have been processed completely.
         commit_wait_event->Wait();
         Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);

@@ -21,7 +21,7 @@ namespace janus
   double MultiPaxosCommo::getDirProbability()
   {
     auto now = chrono::system_clock::now();
-    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 1)
+    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 0.5)
     {
       Log_info("dirProbability without calculation is: %f", dirProbability);
       return dirProbability;
@@ -50,13 +50,11 @@ namespace janus
     else if (temp_dir_1_lat > temp_dir_2_lat)
     {
       Log_info("temp_dir_1_lat > temp_dir_2_lat");
-      Log_info("dirProbability - 0.1 is %f", dirProbability - 0.1);
       dirProbability = std::max(0.1, dirProbability - 0.1);
     }
     else
     {
       Log_info("temp_dir_1_lat < temp_dir_2_lat");
-      Log_info("dirProbability + 0.1 is %f", dirProbability + 0.1);
       dirProbability = std::min(0.9, dirProbability + 0.1);
     }
     Log_info("dirProbability after calculation is : %f", dirProbability);
@@ -543,41 +541,78 @@ namespace janus
 
     sitesInfo_.push_back(leader_site_id);
 
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_real_distribution<double> distribution(0.0, 1.0);
-
-    double randomValue = distribution(generator);
-    auto tempDirProbability = getDirProbability();
-    if (randomValue < tempDirProbability)
-    // if (direction)
+    auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+    if (current_throughput_probe_status >= 0)
     {
-      // Log_info("In first direction");
-      direction = false;
-      for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+      if (current_throughput_probe_status == 0)
       {
-        auto id = it->first; // Access the element through the reverse iterator
-        if (id != leader_site_id)
+        direction = true;
+        for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
         {
-          sitesInfo_.push_back(id);
+          auto id = it->first; // Access the element through the reverse iterator
+          if (id != leader_site_id)
+          {
+            sitesInfo_.push_back(id);
+          }
+        }
+      }
+      else if (current_throughput_probe_status == 1)
+      {
+        for (auto &p : proxies)
+        {
+          direction = false;
+          auto id = p.first;
+          // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+          if (id != leader_site_id)
+          {                           // #cPRC additional
+            sitesInfo_.push_back(id); // #cPRC additional
+          }                           // #cPRC additional
         }
       }
     }
-    else
+    else 
     {
-      direction = true;
-      // Log_info("In second direction");
-      for (auto &p : proxies)
+      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+      std::default_random_engine generator(seed);
+      std::uniform_real_distribution<double> distribution(0.0, 1.0);
+      double randomValue = distribution(generator);
+      auto tempDirProbability = getDirProbability();
+      if (randomValue < tempDirProbability)
+      // if (direction)
       {
-        auto id = p.first;
-        // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
-        if (id != leader_site_id)
-        {                           // #cPRC additional
-          sitesInfo_.push_back(id); // #cPRC additional
-        }                           // #cPRC additional
+        // Log_info("In first direction");
+        direction = true;
+        for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+        {
+          auto id = it->first; // Access the element through the reverse iterator
+          if (id != leader_site_id)
+          {
+            sitesInfo_.push_back(id);
+          }
+        }
+      }
+      else
+      {
+        direction = false;
+        // Log_info("In second direction");
+        for (auto &p : proxies)
+        {
+          auto id = p.first;
+          // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+          if (id != leader_site_id)
+          {                           // #cPRC additional
+            sitesInfo_.push_back(id); // #cPRC additional
+          }                           // #cPRC additional
+        }
       }
     }
 
+
+    if (crpc_id_counter == 0)
+    {
+      // call calc_latency only once
+      dir_throughput_cal->calc_latency();
+    }
     // Normal CRPC code without directions
     // for (auto &p : proxies)
     // {

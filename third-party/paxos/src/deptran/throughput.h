@@ -41,6 +41,7 @@ namespace janus
 
         SpinLock throughput_probe_lock_;
         int throughput_probe = -1;
+        bool loop_var = true;
 
         void add_request_start_time(uint64_t crpc_id, uint64_t direction);
         void add_request_end_time(uint64_t crpc_id);

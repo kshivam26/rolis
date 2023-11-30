@@ -61,7 +61,7 @@ namespace janus
     {
         Coroutine::CreateRun([this]()
                              {
-            while (true)
+            while (loop_var)
             {
                 reset_throughput_probe();
                 // Log_info("Waiting for 1 second");
