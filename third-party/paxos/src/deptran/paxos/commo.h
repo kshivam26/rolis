@@ -20,6 +20,8 @@ namespace janus
     SpinLock dir_l_;
 
     shared_ptr<DirectionThroughput> dir_throughput_cal;
+    uint64_t crpc_dir_0_counter = 0;
+    uint64_t crpc_dir_1_counter = 0;
 
     chrono::system_clock::time_point last_checked_time;
 

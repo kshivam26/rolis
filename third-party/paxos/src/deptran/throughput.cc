@@ -11,7 +11,7 @@ namespace janus
         }
         if (dir_to_throughput_data[direction].crpc_id == 0)
         {
-            Log_info("Adding start time for crpc_id %lu and direction %lu", crpc_id, direction);
+            // Log_info("Adding start time for crpc_id %lu and direction %lu", crpc_id, direction);
             dir_to_throughput_data[direction].crpc_id = crpc_id;
             dir_to_throughput_data[direction].start_time = chrono::system_clock::now();
         }
@@ -34,7 +34,7 @@ namespace janus
             // Log_debug("COUNTER %d", i);
             if (dir_to_throughput_data[i].crpc_id == crpc_id)
             {
-                Log_info("Adding end time for crpc_id %lu", crpc_id);
+                // Log_info("Adding end time for crpc_id %lu", crpc_id);
                 dir_to_throughput_data[i].end_time = chrono::system_clock::now();
                 dir_to_throughput_calculator[i]->add_request_times(dir_to_throughput_data[i].start_time, dir_to_throughput_data[i].end_time);
                 dir_to_throughput_data[i].crpc_id = 0;
@@ -65,7 +65,7 @@ namespace janus
             {
                 reset_throughput_probe();
                 // Log_info("Waiting for 1 second");
-                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1000000);
+                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1500000);
                 ev->Wait();
                 // Log_info("Waiting Finshed");
                 // for (int i = 0; i < dir_to_throughput_calculator.size(); i++)

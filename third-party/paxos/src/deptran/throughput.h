@@ -93,7 +93,7 @@ namespace janus
         void decrement_throughput_probe()
         {
             throughput_probe_lock_.lock();
-            Log_info("Setting throughput probe to %d", throughput_probe - 1);
+            // Log_info("Setting throughput probe to %d", throughput_probe - 1);
             throughput_probe--;
             throughput_probe_lock_.unlock();
         }
@@ -101,7 +101,7 @@ namespace janus
         void reset_throughput_probe()
         {
             throughput_probe_lock_.lock();
-            Log_info("Resetting throughput probe");
+            // Log_info("Resetting throughput probe");
             throughput_probe = 1;
             throughput_probe_lock_.unlock();
         }

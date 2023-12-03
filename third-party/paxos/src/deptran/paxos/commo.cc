@@ -21,7 +21,7 @@ namespace janus
   double MultiPaxosCommo::getDirProbability()
   {
     auto now = chrono::system_clock::now();
-    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 0.5)
+    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 1.5)
     {
       Log_info("dirProbability without calculation is: %f", dirProbability);
       return dirProbability;
@@ -40,22 +40,22 @@ namespace janus
       // dirProbability = 0.5;
       if (dirProbability < 0.5)
       {
-        dirProbability = std::min(0.9, dirProbability + 0.1);
+        dirProbability = std::min(1.0, dirProbability + 0.1);
       }
       else
       {
-        dirProbability = std::max(0.1, dirProbability - 0.1);
+        dirProbability = std::max(0.0, dirProbability - 0.1);
       }
     }
     else if (temp_dir_1_lat > temp_dir_2_lat)
     {
       Log_info("temp_dir_1_lat > temp_dir_2_lat");
-      dirProbability = std::max(0.1, dirProbability - 0.1);
+      dirProbability = std::max(0.0, dirProbability - 0.1);
     }
     else
     {
       Log_info("temp_dir_1_lat < temp_dir_2_lat");
-      dirProbability = std::min(0.9, dirProbability + 0.1);
+      dirProbability = std::min(1.0, dirProbability + 0.1);
     }
     Log_info("dirProbability after calculation is : %f", dirProbability);
     double temp = dirProbability;
@@ -646,9 +646,21 @@ namespace janus
         {
           // Mark this crpc_id in the store based on direction
           if (direction)
+          {
             dir_throughput_cal->add_request_start_time(crpc_id, 0);
+          }
           else
+          {
             dir_throughput_cal->add_request_start_time(crpc_id, 1);
+          }
+        }
+        if (direction)
+        {
+          crpc_dir_0_counter++;
+        }
+        else 
+        {
+          crpc_dir_1_counter++;
         }
         // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
         // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
