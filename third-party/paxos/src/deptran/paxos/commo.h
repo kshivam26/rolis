@@ -23,7 +23,6 @@ namespace janus
     uint64_t crpc_dir_0_counter = 0;
     uint64_t crpc_dir_1_counter = 0;
 
-    chrono::system_clock::time_point last_checked_time;
 
     std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>>
         cRPCEvents{};
@@ -31,7 +30,6 @@ namespace janus
     MultiPaxosCommo() = delete;
     MultiPaxosCommo(PollMgr *);
 
-    double getDirProbability();
 
     shared_ptr<PaxosPrepareQuorumEvent>
     BroadcastPrepare(parid_t par_id,

@@ -65,16 +65,45 @@ namespace janus
             {
                 reset_throughput_probe();
                 // Log_info("Waiting for 1 second");
-                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1500000);
+                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(300000);
                 ev->Wait();
-                // Log_info("Waiting Finshed");
-                // for (int i = 0; i < dir_to_throughput_calculator.size(); i++)
-                // {
-                //     Log_info("Calculating throughput for direction %d", i);
-                //     dir_to_throughput_calculator[i]->calc_latency();
-                // }
-                // Log_info("Done");
+                double temp_dir_1_lat = dir_to_throughput_calculator[0]->get_latency();
+                double temp_dir_2_lat = dir_to_throughput_calculator[1]->get_latency();
+                double diff = abs(temp_dir_1_lat - temp_dir_2_lat);
+                if (diff < 1000 || (temp_dir_1_lat == 0 && temp_dir_2_lat == 0))
+                {
+                    Log_info("diff is less than 1000 or both are 0");
+                    // if (dir_prob == 0.5)
+                    // {
+                    //     continue;
+                    // }
+                    // else if (dir_prob < 0.5)
+                    // {
+                    //     dir_prob = std::min(1.0, dir_prob + 0.1);
+                    // }
+                    // else
+                    // {
+                    //     dir_prob = std::max(0.0, dir_prob - 0.1);
+                    // }
+                    continue;
+                }
+                else if (temp_dir_1_lat > temp_dir_2_lat)
+                {
+                    Log_info("temp_dir_1_lat > temp_dir_2_lat");
+                    dir_prob = std::max(0.0, dir_prob - 0.1);
+                }
+                else
+                {
+                    Log_info("temp_dir_1_lat < temp_dir_2_lat");
+                    dir_prob = std::min(1.0, dir_prob + 0.1);
+                }
             } });
+    }
+
+    double DirectionThroughput::get_dir_prob()
+    {
+        Log_info("Direction Probability is %f", dir_prob);
+        return dir_prob;
     }
 
     double DirectionThroughput::get_latency(uint64_t direction)

@@ -20,7 +20,7 @@ namespace janus
         SpinLock time_lock_;
         chrono::system_clock::time_point start_time;
         chrono::system_clock::time_point end_time;
-        double latency;
+        double latency = 0.0;
 
         void add_request_times(chrono::system_clock::time_point st_time, chrono::system_clock::time_point en_time);
 
@@ -42,11 +42,14 @@ namespace janus
         SpinLock throughput_probe_lock_;
         int throughput_probe = -1;
         bool loop_var = true;
+        double dir_prob = 0.5;
 
         void add_request_start_time(uint64_t crpc_id, uint64_t direction);
         void add_request_end_time(uint64_t crpc_id);
 
         void calc_latency();
+
+        double get_dir_prob();
 
         double get_latency(uint64_t direction);
 

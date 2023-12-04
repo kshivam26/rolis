@@ -15,53 +15,6 @@ namespace janus
   {
     //  verify(poll != nullptr);
     dir_throughput_cal = make_shared<DirectionThroughput>();
-    last_checked_time = chrono::system_clock::now();
-  }
-
-  double MultiPaxosCommo::getDirProbability()
-  {
-    auto now = chrono::system_clock::now();
-    if (chrono::duration_cast<chrono::seconds>(now - last_checked_time).count() < 1.5)
-    {
-      Log_info("dirProbability without calculation is: %f", dirProbability);
-      return dirProbability;
-    }
-    dir_l_.lock();
-    // Log_info("Getting throughput");
-    double temp_dir_1_lat = dir_throughput_cal->get_latency(0);
-    // Log_info("Throughput 1 is: %f", temp_dir_1_comm);
-    double temp_dir_2_lat = dir_throughput_cal->get_latency(1);
-    // Log_info("Throughput 2 is: %f", temp_dir_2_comm);
-    // Log_info("Caclulating dirProbability");
-    double diff = abs(temp_dir_1_lat - temp_dir_2_lat);
-    if (diff < 1000 || (temp_dir_1_lat == 0 && temp_dir_2_lat == 0))
-    {
-      Log_info("diff is less than 1000 or both are 0");
-      // dirProbability = 0.5;
-      if (dirProbability < 0.5)
-      {
-        dirProbability = std::min(1.0, dirProbability + 0.1);
-      }
-      else
-      {
-        dirProbability = std::max(0.0, dirProbability - 0.1);
-      }
-    }
-    else if (temp_dir_1_lat > temp_dir_2_lat)
-    {
-      Log_info("temp_dir_1_lat > temp_dir_2_lat");
-      dirProbability = std::max(0.0, dirProbability - 0.1);
-    }
-    else
-    {
-      Log_info("temp_dir_1_lat < temp_dir_2_lat");
-      dirProbability = std::min(1.0, dirProbability + 0.1);
-    }
-    Log_info("dirProbability after calculation is : %f", dirProbability);
-    double temp = dirProbability;
-    dir_l_.unlock();
-    last_checked_time = chrono::system_clock::now();
-    return temp;
   }
 
   // not used
@@ -576,11 +529,12 @@ namespace janus
       std::default_random_engine generator(seed);
       std::uniform_real_distribution<double> distribution(0.0, 1.0);
       double randomValue = distribution(generator);
-      auto tempDirProbability = getDirProbability();
+      auto tempDirProbability = dir_throughput_cal->get_dir_prob();
       if (randomValue < tempDirProbability)
       // if (direction)
       {
         // Log_info("In first direction");
+        // This is used for marking the direction in which the request is sent
         direction = true;
         for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
         {
@@ -662,6 +616,8 @@ namespace janus
         {
           crpc_dir_1_counter++;
         }
+        Log_info("CRPC DIR 0 COUNTER: %d", crpc_dir_0_counter);
+        Log_info("CRPC DIR 1 COUNTER: %d", crpc_dir_1_counter);
         // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
         // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
         // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
