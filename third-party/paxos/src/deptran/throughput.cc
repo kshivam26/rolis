@@ -65,7 +65,7 @@ namespace janus
             {
                 reset_throughput_probe();
                 // Log_info("Waiting for 1 second");
-                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(300000);
+                auto ev = Reactor::CreateSpEvent<TimeoutEvent>(1500000);
                 ev->Wait();
                 double temp_dir_1_lat = dir_to_throughput_calculator[0]->get_latency();
                 double temp_dir_2_lat = dir_to_throughput_calculator[1]->get_latency();
