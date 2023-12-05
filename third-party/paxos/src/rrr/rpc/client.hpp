@@ -156,6 +156,9 @@ public:
         if (status_ == CONNECTED) {
             this->out_ << v;
         }
+        else{
+            Log_info("the status is not connected inside client << operator");
+        }
         return *this;
     }
 
@@ -163,6 +166,9 @@ public:
     Client& operator <<(Marshal& m) {
         if (status_ == CONNECTED) {
             this->out_.read_from_marshal(m, m.content_size());
+        }
+        else{
+            Log_info("the status is not connected inside client << operator");
         }
         return *this;
     }

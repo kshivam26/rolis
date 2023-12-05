@@ -688,7 +688,7 @@ public:
   pthread_t election_th_;
   pthread_t heartbeat_th_;
   bool running = true;
-  int timeout = 1; // in seconds
+  int timeout = 15; // in seconds // kshivam modified; original timeout = 1
   int heartbeat_timeout = 300; // in milliseconds
   int send_prep_anyway_timeout = 1;
   int cur_epoch = 0;
@@ -778,6 +778,7 @@ public:
 
   void set_lastseen(){
     lastseen = std::chrono::high_resolution_clock::now();
+    // Log_info("**** called set_lastseen()");
   }
 
   void set_bulkprep_time(){

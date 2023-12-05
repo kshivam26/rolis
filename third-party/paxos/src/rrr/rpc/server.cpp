@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <netinet/tcp.h>
-
+#include <arpa/inet.h>
 #include "reactor/coroutine.h"
 #include "server.hpp"
 #include "utils.hpp"
@@ -122,6 +122,7 @@ void ServerConnection::end_reply() {
     // set reply size in packet
     if (bmark_ != nullptr) {
         i32 reply_size = out_.get_and_reset_write_cnt();
+        // Log_info("*alarm4 client request size is %d", reply_size);
         out_.write_bookmark(bmark_, &reply_size);
         delete bmark_;
         bmark_ = nullptr;
@@ -145,18 +146,26 @@ void ServerConnection::handle_read() {
     if(n_peek < sizeof(i32)){
       int bytes_read = block_read_in.chnk_read_from_fd(socket_, sizeof(i32)-n_peek);
     
-      //Log_info("bytes read from socket %d", bytes_read);
+      // Log_info("****alarm4 bytes read from socket %d", bytes_read);
        if (block_read_in.content_size() < sizeof(i32)) {
           return;
        }
+
+      if (bytes_read == -1){
+        Log_info("#### even though bytes read returned error, we still continue ahead");
+      }
     }
 
     list<Request*> complete_requests; 
     n_peek = block_read_in.peek(&packet_size, sizeof(i32));
     if(n_peek == sizeof(i32)){
       int pckt_bytes = block_read_in.chnk_read_from_fd(socket_, packet_size + sizeof(i32) - block_read_in.content_size());
+      // Log_info("****alarm4 bytes read from socket %d", pckt_bytes);
       if(block_read_in.content_size() < packet_size + sizeof(i32)){
         return;
+      }
+      if (pckt_bytes == -1){
+        Log_info("#### even though bytes read returned error, we still continue ahead");
       }
       verify(block_read_in.read(&packet_size, sizeof(i32)) == sizeof(i32));
       Request* req = new Request;
@@ -403,6 +412,7 @@ void Server::server_loop(struct addrinfo* svr_addr) {
       int clnt_socket = accept(server_sock_, svr_addr->ai_addr, &svr_addr->ai_addrlen);
 #endif
         if (clnt_socket >= 0 && status_ == RUNNING) {
+            // Log_info("*alarm4 fd: %d, and client_ip %s\n", svr_addr->ai_addr->sa_data);
             Log_debug("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
             verify(set_nonblocking(clnt_socket, true) == 0);
             int buf_len = 1024 * 1024; // 1M buffer
@@ -435,7 +445,19 @@ void ServerListener::handle_read() {
     int clnt_socket = ::accept(server_sock_, p_svr_addr_->ai_addr, &p_svr_addr_->ai_addrlen);
 #endif
     if (clnt_socket >= 0) {
-      Log_debug("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
+
+      char client_ip[INET_ADDRSTRLEN];
+    
+    if (p_svr_addr_->ai_addr->sa_family == AF_INET) { // IPv4
+        struct sockaddr_in *client_sockaddr = (struct sockaddr_in *)p_svr_addr_->ai_addr;
+        if (inet_ntop(AF_INET, &(client_sockaddr->sin_addr), client_ip, INET_ADDRSTRLEN) == NULL) {
+            verify(0);
+        }
+    }
+
+    // printf("Connection accepted from IP address: %s\n", client_ip);
+      Log_info("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
+      Log_info("*alarm4 fd: %d, and client_ip %s\n", clnt_socket, client_ip);
       verify(set_nonblocking(clnt_socket, true) == 0);
 
       ServerConnection* sconn = new ServerConnection(server_, clnt_socket);
@@ -525,7 +547,7 @@ ServerListener::ServerListener(Server* server, string addr) {
   verify(listen(server_sock_, backlog) == 0);
   verify(set_nonblocking(server_sock_, true) == 0);
   set_nonblocking(server_sock_, true);
-  Log_info("rrr::Server: started on %s", addr.c_str());
+  Log_info("rrr::Server: started on %s with fd:%d", addr.c_str(), fd());
 }
 
 int Server::start(const char* bind_addr) {

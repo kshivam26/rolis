@@ -160,21 +160,61 @@ inline rrr::Marshal& operator >>(rrr::Marshal& m, TxnDispatchResponse& o) {
     return m;
 }
 
+struct BalValResult {
+    rrr::i32 ballot;
+    rrr::i32 valid;
+};
+
+inline rrr::Marshal& operator <<(rrr::Marshal& m, const BalValResult& o) {
+    m << o.ballot;
+    m << o.valid;
+    return m;
+}
+
+inline rrr::Marshal& operator >>(rrr::Marshal& m, BalValResult& o) {
+    m >> o.ballot;
+    m >> o.valid;
+    return m;
+}
+
+struct BulkPrepare2Result {
+    rrr::i32 ballot;
+    rrr::i32 valid;
+    MarshallDeputy ret;
+};
+
+inline rrr::Marshal& operator <<(rrr::Marshal& m, const BulkPrepare2Result& o) {
+    m << o.ballot;
+    m << o.valid;
+    m << o.ret;
+    return m;
+}
+
+inline rrr::Marshal& operator >>(rrr::Marshal& m, BulkPrepare2Result& o) {
+    m >> o.ballot;
+    m >> o.valid;
+    m >> o.ret;
+    return m;
+}
+
 class MultiPaxosService: public rrr::Service {
 public:
     enum {
-        FORWARD = 0x1f300b37,
-        PREPARE = 0x3ed339bc,
-        ACCEPT = 0x2c1aa5e7,
-        DECIDE = 0x1e2df369,
-        HEARTBEAT = 0x249987b3,
-        BULKPREPARE = 0x3094a906,
-        BULKACCEPT = 0x58ffece4,
-        BULKPREPARE2 = 0x245ecf49,
-        SYNCLOG = 0x692edba6,
-        SYNCCOMMIT = 0x54c77d9a,
-        SYNCNOOPS = 0x23b1c916,
-        BULKDECIDE = 0x3ede1dac,
+        FORWARD = 0x6899a058,
+        PREPARE = 0x1767b216,
+        ACCEPT = 0x2c1d7afa,
+        DECIDE = 0x1e0e657e,
+        HEARTBEAT = 0x4231796c,
+        CRPCHEARTBEAT = 0x178921b4,
+        BULKPREPARE = 0x18f338b5,
+        BULKACCEPT = 0x23bf9dbb,
+        CRPCBULKACCEPT = 0x158697b6,
+        BULKPREPARE2 = 0x1872ea60,
+        SYNCLOG = 0x4905a414,
+        SYNCCOMMIT = 0x64cb4583,
+        SYNCNOOPS = 0x6da52b8c,
+        BULKDECIDE = 0x2be7092d,
+        CRPCBULKDECIDE = 0x4a8c4277,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -193,10 +233,16 @@ public:
         if ((ret = svr->reg(HEARTBEAT, this, &MultiPaxosService::__Heartbeat__wrapper__)) != 0) {
             goto err;
         }
+        if ((ret = svr->reg(CRPCHEARTBEAT, this, &MultiPaxosService::__CrpcHeartbeat__wrapper__)) != 0) {
+            goto err;
+        }
         if ((ret = svr->reg(BULKPREPARE, this, &MultiPaxosService::__BulkPrepare__wrapper__)) != 0) {
             goto err;
         }
         if ((ret = svr->reg(BULKACCEPT, this, &MultiPaxosService::__BulkAccept__wrapper__)) != 0) {
+            goto err;
+        }
+        if ((ret = svr->reg(CRPCBULKACCEPT, this, &MultiPaxosService::__CrpcBulkAccept__wrapper__)) != 0) {
             goto err;
         }
         if ((ret = svr->reg(BULKPREPARE2, this, &MultiPaxosService::__BulkPrepare2__wrapper__)) != 0) {
@@ -214,6 +260,9 @@ public:
         if ((ret = svr->reg(BULKDECIDE, this, &MultiPaxosService::__BulkDecide__wrapper__)) != 0) {
             goto err;
         }
+        if ((ret = svr->reg(CRPCBULKDECIDE, this, &MultiPaxosService::__CrpcBulkDecide__wrapper__)) != 0) {
+            goto err;
+        }
         return 0;
     err:
         svr->unreg(FORWARD);
@@ -221,13 +270,16 @@ public:
         svr->unreg(ACCEPT);
         svr->unreg(DECIDE);
         svr->unreg(HEARTBEAT);
+        svr->unreg(CRPCHEARTBEAT);
         svr->unreg(BULKPREPARE);
         svr->unreg(BULKACCEPT);
+        svr->unreg(CRPCBULKACCEPT);
         svr->unreg(BULKPREPARE2);
         svr->unreg(SYNCLOG);
         svr->unreg(SYNCCOMMIT);
         svr->unreg(SYNCNOOPS);
         svr->unreg(BULKDECIDE);
+        svr->unreg(CRPCBULKDECIDE);
         return ret;
     }
     // these RPC handler functions need to be implemented by user
@@ -237,13 +289,16 @@ public:
     virtual void Accept(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cmd, ballot_t* max_ballot, rrr::DeferredReply* defer) = 0;
     virtual void Decide(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cmd, rrr::DeferredReply* defer) = 0;
     virtual void Heartbeat(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
+    virtual void CrpcHeartbeat(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, rrr::DeferredReply* defer) = 0;
     virtual void BulkPrepare(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
     virtual void BulkAccept(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
+    virtual void CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, rrr::DeferredReply* defer) = 0;
     virtual void BulkPrepare2(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, MarshallDeputy* ret, rrr::DeferredReply* defer) = 0;
     virtual void SyncLog(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, MarshallDeputy* ret, rrr::DeferredReply* defer) = 0;
     virtual void SyncCommit(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
     virtual void SyncNoOps(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
     virtual void BulkDecide(const MarshallDeputy& cmd, rrr::i32* ballot, rrr::i32* val, rrr::DeferredReply* defer) = 0;
+    virtual void CrpcBulkDecide(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, rrr::DeferredReply* defer) = 0;
 private:
     void __Forward__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
         MarshallDeputy* in_0 = new MarshallDeputy;
@@ -327,6 +382,26 @@ private:
         rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
         this->Heartbeat(*in_0, out_0, out_1, __defer__);
     }
+    void __CrpcHeartbeat__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
+        uint64_t* in_0 = new uint64_t;
+        req->m >> *in_0;
+        MarshallDeputy* in_1 = new MarshallDeputy;
+        req->m >> *in_1;
+        std::vector<uint16_t>* in_2 = new std::vector<uint16_t>;
+        req->m >> *in_2;
+        std::vector<BalValResult>* in_3 = new std::vector<BalValResult>;
+        req->m >> *in_3;
+        auto __marshal_reply__ = [=] {
+        };
+        auto __cleanup__ = [=] {
+            delete in_0;
+            delete in_1;
+            delete in_2;
+            delete in_3;
+        };
+        rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
+        this->CrpcHeartbeat(*in_0, *in_1, *in_2, *in_3, __defer__);
+    }
     void __BulkPrepare__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
         MarshallDeputy* in_0 = new MarshallDeputy;
         req->m >> *in_0;
@@ -360,6 +435,31 @@ private:
         };
         rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
         this->BulkAccept(*in_0, out_0, out_1, __defer__);
+    }
+    void __CrpcBulkAccept__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp1");
+        uint64_t* in_0 = new uint64_t;
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
+        req->m >> *in_0;
+        MarshallDeputy* in_1 = new MarshallDeputy;
+        req->m >> *in_1;
+        std::vector<uint16_t>* in_2 = new std::vector<uint16_t>;
+        req->m >> *in_2;
+        std::vector<BalValResult>* in_3 = new std::vector<BalValResult>;
+        req->m >> *in_3;
+        auto __marshal_reply__ = [=] {
+        };
+        auto __cleanup__ = [=] {
+            delete in_0;
+            delete in_1;
+            delete in_2;
+            delete in_3;
+        };
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp2 crpc_id: %ld", *in_0);
+        rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
+        // Log_info("#### inside __CrpcBulkAccept__wrapper__; cp3 crpc_id: %ld", *in_0);
+        this->CrpcBulkAccept(*in_0, *in_1, *in_2, *in_3, __defer__);
+        // Log_info("****inside __CrpcBulkAccept__wrapper__; cp4 crpc_id: %ld", *in_0);
     }
     void __BulkPrepare2__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
         MarshallDeputy* in_0 = new MarshallDeputy;
@@ -451,6 +551,26 @@ private:
         };
         rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
         this->BulkDecide(*in_0, out_0, out_1, __defer__);
+    }
+    void __CrpcBulkDecide__wrapper__(rrr::Request* req, rrr::ServerConnection* sconn) {
+        uint64_t* in_0 = new uint64_t;
+        req->m >> *in_0;
+        MarshallDeputy* in_1 = new MarshallDeputy;
+        req->m >> *in_1;
+        std::vector<uint16_t>* in_2 = new std::vector<uint16_t>;
+        req->m >> *in_2;
+        std::vector<BalValResult>* in_3 = new std::vector<BalValResult>;
+        req->m >> *in_3;
+        auto __marshal_reply__ = [=] {
+        };
+        auto __cleanup__ = [=] {
+            delete in_0;
+            delete in_1;
+            delete in_2;
+            delete in_3;
+        };
+        rrr::DeferredReply* __defer__ = new rrr::DeferredReply(req, sconn, __marshal_reply__, __cleanup__);
+        this->CrpcBulkDecide(*in_0, *in_1, *in_2, *in_3, __defer__);
     }
 };
 
@@ -559,6 +679,26 @@ public:
         __fu__->release();
         return __ret__;
     }
+    rrr::Future* async_CrpcHeartbeat(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+        rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCHEARTBEAT, __fu_attr__);
+        if (__fu__ != nullptr) {
+            *__cl__ << id;
+            *__cl__ << cmd;
+            *__cl__ << addrChain;
+            *__cl__ << state;
+        }
+        __cl__->end_request();
+        return __fu__;
+    }
+    rrr::i32 CrpcHeartbeat(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state) {
+        rrr::Future* __fu__ = this->async_CrpcHeartbeat(id, cmd, addrChain, state);
+        if (__fu__ == nullptr) {
+            return ENOTCONN;
+        }
+        rrr::i32 __ret__ = __fu__->get_error_code();
+        __fu__->release();
+        return __ret__;
+    }
     rrr::Future* async_BulkPrepare(const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
         rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::BULKPREPARE, __fu_attr__);
         if (__fu__ != nullptr) {
@@ -598,6 +738,39 @@ public:
             __fu__->get_reply() >> *ballot;
             __fu__->get_reply() >> *val;
         }
+        __fu__->release();
+        return __ret__;
+    }
+    rrr::Future* async_CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+        // Log_info("#### inside async_CrpcBulkAccept; cp1 with crpc_id: %ld", id);
+        rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCBULKACCEPT, __fu_attr__);
+        if (__fu__ != nullptr) {
+            // Log_info("####inside async_CrpcBulkAccept; cp2-1 with crpc_id: %ld", id);
+            *__cl__ << id;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-2 with crpc_id: %ld", id);
+            *__cl__ << cmd;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-3 with crpc_id: %ld", id);
+            *__cl__ << addrChain;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-4 with crpc_id: %ld", id);
+            *__cl__ << state;
+            // Log_info("####inside async_CrpcBulkAccept; cp2-5 with crpc_id: %ld", id);
+        }
+        // Log_info("#### inside async_CrpcBulkAccept; cp3 with crpc_id: %ld", id);
+        __cl__->end_request();
+        // Log_info("#### inside async_CrpcBulkAccept; cp4 with crpc_id: %ld", id);
+        if (__fu__ == nullptr) {
+            // Log_info("#### inside async_CrpcBulkAccept; __fu__ null with crpc_id: %ld", id);
+            // return ENOTCONN;
+        }
+        
+        return __fu__;
+    }
+    rrr::i32 CrpcBulkAccept(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state) {
+        rrr::Future* __fu__ = this->async_CrpcBulkAccept(id, cmd, addrChain, state);
+        if (__fu__ == nullptr) {
+            return ENOTCONN;
+        }
+        rrr::i32 __ret__ = __fu__->get_error_code();
         __fu__->release();
         return __ret__;
     }
@@ -708,39 +881,59 @@ public:
         __fu__->release();
         return __ret__;
     }
+    rrr::Future* async_CrpcBulkDecide(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+        rrr::Future* __fu__ = __cl__->begin_request(MultiPaxosService::CRPCBULKDECIDE, __fu_attr__);
+        if (__fu__ != nullptr) {
+            *__cl__ << id;
+            *__cl__ << cmd;
+            *__cl__ << addrChain;
+            *__cl__ << state;
+        }
+        __cl__->end_request();
+        return __fu__;
+    }
+    rrr::i32 CrpcBulkDecide(const uint64_t& id, const MarshallDeputy& cmd, const std::vector<uint16_t>& addrChain, const std::vector<BalValResult>& state) {
+        rrr::Future* __fu__ = this->async_CrpcBulkDecide(id, cmd, addrChain, state);
+        if (__fu__ == nullptr) {
+            return ENOTCONN;
+        }
+        rrr::i32 __ret__ = __fu__->get_error_code();
+        __fu__->release();
+        return __ret__;
+    }
 };
 
 class ClassicService: public rrr::Service {
 public:
     enum {
-        MSGSTRING = 0x1d0eebab,
-        MSGMARSHALL = 0x56332c42,
-        DISPATCH = 0x4eeae560,
-        PREPARE = 0x12c808be,
-        COMMIT = 0x3f5f50ce,
-        ABORT = 0x35c4289d,
-        UPGRADEEPOCH = 0x606ad021,
-        TRUNCATEEPOCH = 0x5aa4b85a,
-        RPC_NULL = 0x62b4c084,
-        TAPIRACCEPT = 0x386f2e01,
-        TAPIRFASTACCEPT = 0x2800f924,
-        TAPIRDECIDE = 0x3b2877f4,
-        RCCDISPATCH = 0x137064c0,
-        RCCFINISH = 0x14436ea6,
-        RCCINQUIRE = 0x4177fa53,
-        RCCDISPATCHRO = 0x5bc4ebfa,
-        RCCINQUIREVALIDATION = 0x4611385a,
-        RCCNOTIFYGLOBALVALIDATION = 0x1cae978d,
-        JANUSDISPATCH = 0x2dcc423d,
-        JANUSCOMMIT = 0x6f9254e7,
-        JANUSCOMMITWOGRAPH = 0x1b3241f8,
-        JANUSINQUIRE = 0x5ce268e9,
-        JANUSPREACCEPT = 0x6a9a671f,
-        JANUSPREACCEPTWOGRAPH = 0x10fe58f2,
-        JANUSACCEPT = 0x158460fa,
-        PREACCEPTFEBRUUS = 0x65ea71d0,
-        ACCEPTFEBRUUS = 0x36085b2c,
-        COMMITFEBRUUS = 0x551bbfaf,
+        MSGSTRING = 0x5d2dd4b8,
+        MSGMARSHALL = 0x68b5e4e8,
+        DISPATCH = 0x65ff3966,
+        PREPARE = 0x2fe2fbb4,
+        COMMIT = 0x3d5fb3d5,
+        ABORT = 0x358ee602,
+        UPGRADEEPOCH = 0x39a805ab,
+        TRUNCATEEPOCH = 0x30dfd4fd,
+        RPC_NULL = 0x64c0768e,
+        TAPIRACCEPT = 0x36fd9659,
+        TAPIRFASTACCEPT = 0x5275006d,
+        TAPIRDECIDE = 0x5e1c4d73,
+        RCCDISPATCH = 0x3d8baf15,
+        RCCFINISH = 0x5a969094,
+        RCCINQUIRE = 0x3151435b,
+        RCCDISPATCHRO = 0x11577370,
+        RCCINQUIREVALIDATION = 0x38f006a0,
+        RCCNOTIFYGLOBALVALIDATION = 0x3f527ded,
+        JANUSDISPATCH = 0x58af5da5,
+        JANUSCOMMIT = 0x2058c395,
+        JANUSCOMMITWOGRAPH = 0x3040eab2,
+        JANUSINQUIRE = 0x45302452,
+        JANUSPREACCEPT = 0x4bbdbb15,
+        JANUSPREACCEPTWOGRAPH = 0x3b571956,
+        JANUSACCEPT = 0x45fe65df,
+        PREACCEPTFEBRUUS = 0x6a5ef33f,
+        ACCEPTFEBRUUS = 0x6da982c2,
+        COMMITFEBRUUS = 0x2bda1296,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -1959,10 +2152,10 @@ public:
 class ServerControlService: public rrr::Service {
 public:
     enum {
-        SERVER_SHUTDOWN = 0x190eb91f,
-        SERVER_READY = 0x41ae209d,
-        SERVER_HEART_BEAT_WITH_DATA = 0x393504f4,
-        SERVER_HEART_BEAT = 0x1920fc51,
+        SERVER_SHUTDOWN = 0x1c59995b,
+        SERVER_READY = 0x6e82f06a,
+        SERVER_HEART_BEAT_WITH_DATA = 0x25a4205a,
+        SERVER_HEART_BEAT = 0x3e963809,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -2105,14 +2298,14 @@ public:
 class ClientControlService: public rrr::Service {
 public:
     enum {
-        CLIENT_GET_TXN_NAMES = 0x20e359d6,
-        CLIENT_SHUTDOWN = 0x2d619bad,
-        CLIENT_FORCE_STOP = 0x596b5b38,
-        CLIENT_RESPONSE = 0x3e9e633e,
-        CLIENT_READY = 0x41451c54,
-        CLIENT_READY_BLOCK = 0x2a473f8a,
-        CLIENT_START = 0x2a2a7e21,
-        DISPATCHTXN = 0x2e11b470,
+        CLIENT_GET_TXN_NAMES = 0x445cb3b9,
+        CLIENT_SHUTDOWN = 0x576411ec,
+        CLIENT_FORCE_STOP = 0x507746aa,
+        CLIENT_RESPONSE = 0x2aba549d,
+        CLIENT_READY = 0x604f320a,
+        CLIENT_READY_BLOCK = 0x1b75d41d,
+        CLIENT_START = 0x479463e5,
+        DISPATCHTXN = 0x14ab3ceb,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;

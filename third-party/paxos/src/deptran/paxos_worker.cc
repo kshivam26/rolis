@@ -597,6 +597,7 @@ void PaxosWorker::InitQueueRead(){
 }
 
 void PaxosWorker::AddReplayEntry(Marshallable& entry){
+  Log_info("**** inside AddReplayEntry, something enqueued");
   Marshallable *p = &entry;
   replay_queue.enqueue(p);
 }
@@ -607,6 +608,7 @@ void* PaxosWorker::StartReplayRead(void* arg){
     Marshallable* p;
     auto res = pw->replay_queue.try_dequeue(p);
     if(!res)continue;
+    Log_info("**** inside StartReplayRead, calling next");
     pw->Next(*p);
   }
 }

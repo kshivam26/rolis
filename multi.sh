@@ -1,7 +1,7 @@
 #!/bin/bash
 # ulimit -n 8000
 # ----------------------------------------------------------------------------- compile ------------------------------------------------------------------------------------------
-sudo pkill -f dbtest
+pkill -f dbtest
 # make paxos
 # for the skewed workload, using backoff instead of perf??
 make clean && make -j dbtest MODE=perf \

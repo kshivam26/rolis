@@ -10,6 +10,10 @@ class TxData;
 
 class MultiPaxosCommo : public Communicator {
  public:
+  uint64_t crpc_id_counter = 0;
+  bool direction = false;
+  std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>> cRPCEvents {};
+  SpinLock cRPCEvents_l_;
   MultiPaxosCommo() = delete;
   MultiPaxosCommo(PollMgr*);
   shared_ptr<PaxosPrepareQuorumEvent>
@@ -43,6 +47,18 @@ class MultiPaxosCommo : public Communicator {
                         shared_ptr<Marshallable> cmd,
                         const std::function<void(ballot_t, int)>& cb) override;
 
+  shared_ptr<PaxosAcceptQuorumEvent>
+    CrpcBroadcastHeartBeat(parid_t par_id,
+                                    shared_ptr<Marshallable> cmd,
+                                    const function<void(ballot_t, int)>& cb,
+                                    siteid_t id);
+  virtual void
+    CrpcHeartbeat(parid_t par_id,
+                  uint64_t id,
+                  MarshallDeputy cmd,
+                  std::vector<uint16_t>& addrChain, 
+                  std::vector<BalValResult>& state);
+
   virtual shared_ptr<PaxosAcceptQuorumEvent>
     BroadcastSyncNoOps(parid_t par_id,
                     shared_ptr<Marshallable> cmd,
@@ -63,10 +79,38 @@ class MultiPaxosCommo : public Communicator {
     BroadcastBulkAccept(parid_t par_id,
                         shared_ptr<Marshallable> cmd,
                         const std::function<void(ballot_t, int)>& cb);
+
+  shared_ptr<PaxosAcceptQuorumEvent>
+    CrpcBroadcastBulkAccept(parid_t par_id,
+                        shared_ptr<Marshallable> cmd,
+                        const std::function<void(ballot_t, int)>& cb,
+                        siteid_t id);
+
+  virtual void
+    CrpcBulkAccept(parid_t par_id,
+                  uint16_t recv_id,
+                  uint64_t id,
+                  MarshallDeputy cmd,
+                  std::vector<uint16_t>& addrChain, 
+                  std::vector<BalValResult>& state);
+
   shared_ptr<PaxosAcceptQuorumEvent>
     BroadcastBulkDecide(parid_t par_id,
                            const shared_ptr<Marshallable> cmd,
                            const std::function<void(ballot_t, int)>& cb);
+
+  shared_ptr<PaxosAcceptQuorumEvent>
+    CrpcBroadcastBulkDecide(parid_t par_id,
+                        shared_ptr<Marshallable> cmd,
+                        const std::function<void(ballot_t, int)>& cb,
+                        siteid_t id);
+
+  virtual void
+    CrpcBulkDecide(parid_t par_id,
+                  uint64_t id,
+                  MarshallDeputy cmd,
+                  std::vector<uint16_t>& addrChain, 
+                  std::vector<BalValResult>& state);
 
   shared_ptr<PaxosAcceptQuorumEvent>
     BroadcastPrepare2(parid_t par_id,

@@ -632,7 +632,9 @@ void send_bulk_prep(int send_epoch){
 void* electionMonitor(void* arg){
    // we need to take two situations into consideration: 1) startup; 2) exit
    // startup: sleep 5 seconds for the startup
+  Log_info("**** inside electionMonitor, before usleep");
    usleep(5 * 1000 * 1000);
+  Log_info("**** inside electionMonitor, after usleep");
 
    while(es->running){
 
@@ -655,6 +657,7 @@ void* electionMonitor(void* arg){
       es->sleep_timeout();
       continue;
     }
+    Log_info("did_not_see_leader returned true");
     int send_epoch = es->set_epoch();
     es->state_unlock();
     send_bulk_prep(send_epoch);
@@ -712,6 +715,9 @@ int setup2(int action){  // action == 0 is default, action == 1 is forced to be 
     server_launch_worker(server_infos);
   }
   if(action == 0 && es->machine_id == 0){
+    // kshivam
+    Log_info("**** inside setup2, calling sleep on leader");
+    sleep(1);
     es->set_state(1);
     es->set_epoch(2);
     es->set_leader(0);

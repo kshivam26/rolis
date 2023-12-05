@@ -556,6 +556,7 @@ main(int argc, char **argv) {
 
       if(len == 0){
         std::cout << "par_id " << par_id << " is ended..." << std::endl;
+        std::cout << "****end_recv is being set to true" << std::endl;
         end_recv = true;
         count ++;
         local_end_recv = true ;
@@ -866,11 +867,11 @@ main(int argc, char **argv) {
     }
 
     if (!leader_config && multi_process) {
-        while (!(count == nthreads && end_recv)) {
+        while (!(count == nthreads && end_recv)) { // kshivam // changing it back because maybe leader is not terminated and if follower shuts down, then it will cause an error
             sleep(1);
             printf("follower is waiting for being ended: %d/%zu\n", count.load(), nthreads);
         }
-
+        sleep(1); // kshivam
         /*
         int latency_readyQueue = 0 ;
         for (auto it: readyQueueTracker) {

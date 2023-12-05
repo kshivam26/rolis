@@ -8,22 +8,56 @@ abstract service MultiPaxos {
                 ballot_t ballot |
                 ballot_t max_ballot);
 
+  //defer CrpcPrepare(uint64_t id,
+  //              uint64_t slot,
+  //              ballot_t ballot,
+  //              vector<uint16_t> addrChain,
+  //              vector<PrepareResult> state);
+
   defer Accept(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd |
                ballot_t max_ballot);
 
+  //defer CrpcAccept(uint64_t id,
+  //              uint64_t slot,
+  //             ballot_t ballot,
+  //             MarshallDeputy cmd,
+  //              vector<uint16_t> addrChain,
+  //              vector<AcceptResult> state);
+
   defer Decide(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd);
 
+  //defer CrpcAccept(uint64_t id,
+  //              uint64_t slot,
+  //             ballot_t ballot,
+  //             MarshallDeputy cmd
+  //              vector<uint16_t> addrChain);
+
   defer Heartbeat(MarshallDeputy cmd | i32 ballot, i32 val);
+
+  defer CrpcHeartbeat(uint64_t id,
+                    MarshallDeputy cmd,
+                    vector<uint16_t> addrChain,
+                    vector<BalValResult> state);
 
   defer BulkPrepare(MarshallDeputy cmd | i32 ballot, i32 val);
 
   defer BulkAccept(MarshallDeputy cmd | i32 ballot, i32 val);
 
+  defer CrpcBulkAccept(uint64_t id,
+                    MarshallDeputy cmd,
+                    vector<uint16_t> addrChain,
+                    vector<BalValResult> state);
+
   defer BulkPrepare2(MarshallDeputy cmd | i32 ballot, i32 val, MarshallDeputy ret);
+
+  // defer CrpcBulkPrepare2(uint64_t id,
+  //                   MarshallDeputy cmd,
+  //                   vector<uint16_t> addrChain,
+  //                   vector<BulkPrepare2Result> state);
 
   defer SyncLog(MarshallDeputy cmd | i32 ballot, i32 val, MarshallDeputy ret);
 
@@ -32,6 +66,11 @@ abstract service MultiPaxos {
   defer SyncNoOps(MarshallDeputy cmd | i32 ballot, i32 val);
 
   defer BulkDecide(MarshallDeputy cmd | i32 ballot, i32 val);
+
+  defer CrpcBulkDecide(uint64_t id,
+                    MarshallDeputy cmd,
+                    vector<uint16_t> addrChain,
+                    vector<BalValResult> state);
 }
 
 // below is for 2PL and OCC
@@ -217,4 +256,16 @@ abstract service ClientControl {
     defer client_ready_block ( | i32 res);
     defer client_start ( | );
     defer DispatchTxn(TxDispatchRequest req | TxReply result);
+}
+
+
+struct BalValResult {
+  i32 ballot;
+  i32 valid;
+}
+
+struct BulkPrepare2Result {
+  i32 ballot;
+  i32 valid;
+  MarshallDeputy ret;
 }

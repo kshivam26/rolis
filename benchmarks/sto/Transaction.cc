@@ -15,6 +15,8 @@
 #include <queue>
 #include <mutex>
 
+#include<chrono> 
+#include<thread>
 
 std::mutex paxos_lock{};
 
@@ -666,23 +668,36 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
             paxos_intercept((char *)queueLog, pos, TThread::getPartitionID ());
 #else
 
-          #if defined(SINGLE_PAXOS)
+          #if defined(SINGLE_PAXOS) //kshivam
           // for single Paxos stream enqueuing
           int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
           while (1) {
-              if (outstanding >= 200||(outstanding <200 && outstanding>10)) {
-                  outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
-                  continue;
+              if (outstanding >= 10) {
+                outstanding = get_outstanding_logs(TThread::getPartitionID ());    
+                continue;
               }
 
-              if (outstanding <= 10) {
-                  outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
+              if (outstanding < 10) {
+                  outstanding = get_outstanding_logs(TThread::getPartitionID ());
                   break;
               }
           }
           #endif
 
         #if !defined(NO_ADD_LOG_TO_NC)
+          // for single Paxos stream enqueuing
+          int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
+          while (1) {
+              if (outstanding >= 10) {
+                outstanding = get_outstanding_logs(TThread::getPartitionID ());    
+                continue;
+              }
+
+              if (outstanding < 10) {
+                  outstanding = get_outstanding_logs(TThread::getPartitionID ());
+                  break;
+              }
+          }
           add_log_to_nc((char *)queueLog, pos, TThread::getPartitionID ());
         #endif
 #endif

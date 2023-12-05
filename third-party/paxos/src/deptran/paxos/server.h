@@ -4,8 +4,10 @@
 #include "../constants.h"
 #include "../scheduler.h"
 #include "../paxos_worker.h"
+#include <iostream>
 
 namespace janus {
+
 class Command;
 class CmdData;
 
@@ -35,6 +37,12 @@ class PaxosServer : public TxLogServer {
   int leader_id;
   map<pair<slotid_t, slotid_t>, BulkPrepare> bulk_prepares{};  // saves all the prepare ranges.
   map<slotid_t, shared_ptr<PaxosData>> logs_{};
+
+  map<slotid_t, std::shared_ptr<rrr::Coroutine>> commit_coro{};
+  map<slotid_t, shared_ptr<IntEvent>> commit_ev{};
+  vector<std::shared_ptr<rrr::Coroutine>> ready_commit_coro;
+  SpinLock commit_ev_l_;
+  set<slotid_t> accepted_slots;
   ballot_t cur_epoch;
 
   int n_prepare_ = 0;
@@ -47,9 +55,16 @@ class PaxosServer : public TxLogServer {
 
   shared_ptr<PaxosData> GetInstance(slotid_t id) {
     verify(id >= min_active_slot_);
+    // Log_info("#### the current par_id:%d, slot_id: %ld and value is going to be accessed", partition_id_, id);
     auto& sp_instance = logs_[id];
-    if(!sp_instance)
+    if(!sp_instance){
+      // Log_info("#### inside GetInstance; sp_instance is null for par_id:%d, slot_id: %ld", partition_id_, id);
       sp_instance = std::make_shared<PaxosData>();
+    }
+    // else{
+    //   // Log_info("**** the value of max_ballot_accepted: %d", sp_instance->max_ballot_accepted_);
+    // }
+    // Log_info("#### returning from GetInstance for par_id:%d, slot_id: %ld", partition_id_, id);
     return sp_instance;
   }
 
@@ -78,15 +93,30 @@ class PaxosServer : public TxLogServer {
                     i32* valid,
                     const function<void()> &cb);
 
+  void OnCrpcHeartbeat(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
+
   void OnBulkAccept(shared_ptr<Marshallable> &cmd,
                     i32* ballot,
                     i32 *valid,
                     const function<void()> &cb);
 
+  void OnCrpcBulkAccept(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
+
   void OnBulkCommit(shared_ptr<Marshallable> &cmd,
                     i32* ballot,
                     i32 *valid,
                     const function<void()> &cb);
+
+  void OnCrpcBulkCommit(const uint64_t& id,
+                  const MarshallDeputy& cmd, 
+                  const std::vector<uint16_t>& addrChain, 
+                  const std::vector<BalValResult>& state);
 
   void OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
                       i32* ballot,
@@ -111,6 +141,18 @@ class PaxosServer : public TxLogServer {
                   i32 *valid,
                   const function<void()> &cb);
 
+  void RunPendingCommitCoroutine(){
+    for(auto coro: ready_commit_coro){
+      // Log_info("#### PaxosServer::RunPendingCommitCoroutine; running coroutine from the ready_commit_coro vector; coro_id: %p", coro.get());
+      coro->Continue();
+    }
+
+    // Log_info("#### PaxosServer::RunPendingCommitCoroutine; clearing ready_commit_coro vector");
+    ready_commit_coro.clear();
+  }
+
+  bool NotEndCmd(shared_ptr<Marshallable> &cmd);
+
   int get_open_slot(){
     return cur_open_slot_++;
   }
@@ -120,7 +162,7 @@ class PaxosServer : public TxLogServer {
     // for now just free anything 1000 slots before.
     int i = min_active_slot_;
     while (i + 100 < max_executed_slot_) {
-      //Log_info("Erasing entry number %d", i);
+      Log_info("Erasing entry number %d", i);
       logs_.erase(i);
       i++;
     }
@@ -130,6 +172,7 @@ class PaxosServer : public TxLogServer {
   // should be called from locked state.
   void clear_accepted_entries(){
     for(int i = max_committed_slot_; i <= max_accepted_slot_; i++){
+      Log_info("Erasing entry number %ld", i);
       logs_.erase(i);
     }
   }

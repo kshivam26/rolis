@@ -178,6 +178,10 @@ size_t Marshal::write(const void* p, size_t n) {
             tail_ = tail_->next;
         }
     }
+    // kshivam
+    if (INT32_MAX - write_cnt_ < n){
+            Log_info("alarm alarm alarm 2");
+        }
     write_cnt_ += n;
     content_size_ += n;
     assert(content_size_ == content_size_slow());
@@ -203,6 +207,10 @@ size_t Marshal::bypass_copying(MarshallDeputy data, size_t sz) {
     tail_->next = new chunk(data, sz);
     tail_ = tail_->next;
   }
+// kshivam
+if (INT32_MAX - write_cnt_ < sz){
+            Log_info("alarm alarm alarm 3");
+}
   write_cnt_ += sz;
   content_size_ += sz;
   assert(content_size_ == content_size_slow());
@@ -294,6 +302,10 @@ size_t Marshal::read_from_fd(int fd) {
         }
         n_bytes += r;
     }
+    // kshivam
+    if (INT32_MAX - write_cnt_ < n_bytes){
+            Log_info("alarm alarm alarm 3");
+        }
     write_cnt_ += n_bytes;
     content_size_ += n_bytes;
     assert(content_size_ == content_size_slow());
@@ -307,8 +319,33 @@ size_t Marshal::chnk_read_from_fd(int fd, size_t bytes){
     size_t read_bytes = 0;
     read_bytes += head_->read_from_fd(fd, bytes);
     content_size_ += read_bytes;
-    write_cnt_ += read_bytes;
-    if(read_bytes <= 0)return 0;
+    // kshivam
+    // if (INT32_MAX - write_cnt_ < read_bytes){
+    //         Log_info("alarm alarm alarm 4");
+    //         Log_info("********* write_cnt_: %d", write_cnt_);
+    //         std::cout << "******* value of bytes" << bytes << std::endl;
+    //         std::cout << "******* read bytes" << read_bytes << std::endl;
+    //         Log_info("********* read_bytes: %ld", read_bytes);
+    //     }
+    if (read_bytes == -1){
+        Log_info("alarm alarm alarm 4");
+        Log_info("********* write_cnt_ before: %d with fd: %d", write_cnt_, fd);
+    }
+    
+    // kshivam // delete the following check later, included because doesn't make sense to add -1 to an integer
+    if (read_bytes != -1){
+        write_cnt_ += read_bytes;
+    }
+    
+    if (read_bytes == -1){
+        Log_info("alarm alarm alarm 4");
+        Log_info("********* write_cnt_ after: %d with fd: %d", write_cnt_, fd);
+    }
+    // Log_info("********* write_cnt_: %d", write_cnt_); // kshivam marker, uncomment
+    // if(read_bytes <= 0){
+    //     std::cout<< "read_bytes read is less than equal to zero?" << std::endl;
+    //     return 0;
+    // }
     return read_bytes;
 }
 
@@ -336,7 +373,10 @@ size_t Marshal::read_reuse_chnk(Marshal& m, size_t n){
             tail_ = chnk;
         }
     }
-
+    // kshivam
+    if (INT32_MAX - write_cnt_ < n_fetch){
+            Log_info("alarm alarm alarm 5");
+        }
     write_cnt_ += n_fetch;
     content_size_ += n_fetch;
     verify(m.content_size_ >= n_fetch);
@@ -379,6 +419,10 @@ size_t Marshal::read_from_marshal(Marshal& m, size_t n) {
                 delete m.head_;
                 m.head_ = next;
             }
+        }
+        // kshivam
+        if (INT32_MAX - write_cnt_ < n_fetch){
+            Log_info("alarm alarm alarm 1");
         }
         write_cnt_ += n_fetch;
         content_size_ += n_fetch;
@@ -454,10 +498,11 @@ Marshal::bookmark* Marshal::set_bookmark(size_t n) {
             tail_ = tail_->next;
         }
         bm->ptr[i] = tail_->set_bookmark();
+        // std::cout << "inside set_bookmark" << " bm->ptr[0]: " << bm->ptr[i] << std::endl;
     }
     content_size_ += n;
     assert(content_size_ == content_size_slow());
-
+    
     return bm;
 }
 
