@@ -220,8 +220,7 @@ void Client::handle_read() {
       in_ >> v_reply_xid >> v_error_code;
 
       pending_fu_l_.lock();
-      unordered_map<i64, Future*>::iterator
-          it = pending_fu_.find(v_reply_xid.get());
+      auto it = pending_fu_.find(v_reply_xid.get());
       if (it != pending_fu_.end()) {
         Future* fu = it->second;
         verify(fu->xid_ == v_reply_xid.get());
@@ -276,7 +275,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   if (status_ != CONNECTED) {
     Log_info("**** inside begin_request; looks like the client has gotten disconnected :(");
     pending_fu_l_.lock();
-    unordered_map<i64, Future*>::iterator it = pending_fu_.find(fu->xid_);
+    auto it = pending_fu_.find(fu->xid_);
     if (it != pending_fu_.end()) {
       it->second->release();
       pending_fu_.erase(it);

@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../communicator.h"
+#include "../throughput.h"
 
 namespace janus {
 
@@ -12,6 +13,11 @@ class MultiPaxosCommo : public Communicator {
  public:
   uint64_t crpc_id_counter = 0;
   bool direction = false;
+
+  shared_ptr<DirectionThroughput> dir_throughput_cal;
+  uint64_t crpc_dir_0_counter = 0;
+  uint64_t crpc_dir_1_counter = 0;
+
   std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>> cRPCEvents {};
   SpinLock cRPCEvents_l_;
   MultiPaxosCommo() = delete;

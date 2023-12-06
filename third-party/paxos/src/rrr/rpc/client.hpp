@@ -122,7 +122,7 @@ class Client: public Pollable {
     Marshal::bookmark* bmark_;
 
     Counter xid_counter_;
-    std::unordered_map<i64, Future*> pending_fu_;
+    std::map<i64, Future*> pending_fu_;
 
     SpinLock pending_fu_l_;
     SpinLock out_l_;

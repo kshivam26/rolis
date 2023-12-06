@@ -12,6 +12,7 @@ thread_local bool hasPrinted = false;
 
 MultiPaxosCommo::MultiPaxosCommo(PollMgr* poll) : Communicator(poll) {
 //  verify(poll != nullptr);
+dir_throughput_cal = make_shared<DirectionThroughput>();
 }
 
 // not used
@@ -461,28 +462,103 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
 
   // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1; par_id: %d", par_id);
   // bi-directional chain topology 
-  if (direction){
-    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-0; par_id: %d", par_id); 
-    for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) {
+  // if (direction){
+  //   // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-0; par_id: %d", par_id); 
+  //   for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) {
+  //       auto id = it->first; // Access the element through the reverse iterator
+  //       if (id != leader_site_id) { 
+  //         sitesInfo_.push_back(id);
+  //       }
+  //   }
+  // }
+  // else{
+  //   // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-1; par_id: %d", par_id); 
+  //   for (auto& p : proxies) {
+  //     auto id = p.first;
+  //     // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+  //     if (id != leader_site_id) { // #cPRC additional
+  //       sitesInfo_.push_back(id); // #cPRC additional
+  //     }                           // #cPRC additional
+  //   }
+  // }
+  
+  // // Log_info("#### inside CrpcBroadcastBulkAccept; cp 2; par_id: %d", par_id);
+  // direction = !direction;
+
+  auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+  if (current_throughput_probe_status >= 0)
+  {
+    if (current_throughput_probe_status == 0)
+    {
+      direction = true;
+
+      for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+      {
         auto id = it->first; // Access the element through the reverse iterator
-        if (id != leader_site_id) { 
+        if (id != leader_site_id)
+        {
           sitesInfo_.push_back(id);
         }
+      }
+    }
+    else if (current_throughput_probe_status == 1)
+    {
+      for (auto &p : proxies)
+      {
+        direction = false;
+        auto id = p.first;
+        // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+        if (id != leader_site_id)
+        {                           // #cPRC additional
+          sitesInfo_.push_back(id); // #cPRC additional
+        }                           // #cPRC additional
+      }
     }
   }
-  else{
-    // Log_info("#### inside CrpcBroadcastBulkAccept; cp 1-1; par_id: %d", par_id); 
-    for (auto& p : proxies) {
-      auto id = p.first;
-      // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
-      if (id != leader_site_id) { // #cPRC additional
-        sitesInfo_.push_back(id); // #cPRC additional
-      }                           // #cPRC additional
+  else 
+  {
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    double randomValue = distribution(generator);
+    auto tempDirProbability = dir_throughput_cal->get_dir_prob();
+    if (randomValue < tempDirProbability)
+    // if (direction)
+    {
+      // Log_info("In first direction");
+      // This is used for marking the direction in which the request is sent
+      direction = true;
+      for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+      {
+        auto id = it->first; // Access the element through the reverse iterator
+        if (id != leader_site_id)
+        {
+          sitesInfo_.push_back(id);
+        }
+      }
+    }
+    else
+    {
+      direction = false;
+      // Log_info("In second direction");
+      for (auto &p : proxies)
+      {
+        auto id = p.first;
+        // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+        if (id != leader_site_id)
+        {                           // #cPRC additional
+          sitesInfo_.push_back(id); // #cPRC additional
+        }                           // #cPRC additional
+      }
     }
   }
-  
-  // Log_info("#### inside CrpcBroadcastBulkAccept; cp 2; par_id: %d", par_id);
-  direction = !direction;
+
+
+  if (crpc_id_counter == 0)
+  {
+    // call calc_latency only once
+    dir_throughput_cal->calc_latency();
+  }
 
   sitesInfo_.push_back(leader_site_id);
 
@@ -499,6 +575,29 @@ MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
       // int sizeB = sizeof(uint64_t);
       // verify(sizeA == sizeB);
       uint64_t crpc_id = ++crpc_id_counter;
+      auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+      if (current_throughput_probe_status >= 0)
+      {
+        // Mark this crpc_id in the store based on direction
+        if (direction)
+        {
+          dir_throughput_cal->add_request_start_time(crpc_id, 0);
+        }
+        else
+        {
+          dir_throughput_cal->add_request_start_time(crpc_id, 1);
+        }
+      }
+      if (direction)
+      {
+        crpc_dir_0_counter++;
+      }
+      else 
+      {
+        crpc_dir_1_counter++;
+      }
+      Log_info("CRPC DIR 0 COUNTER: %d", crpc_dir_0_counter);
+      Log_info("CRPC DIR 1 COUNTER: %d", crpc_dir_1_counter);
       // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
       // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
       // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
