@@ -629,7 +629,7 @@ namespace janus
       x->cRPCEvents.erase(id);
       x->cRPCEvents_l_.unlock();
 
-      // x->dir_throughput_cal->add_request_end_time(id); // dynamic: uncomment
+      x->dir_throughput_cal->add_request_end_time(id); // dynamic: uncomment
       
       // Log_info("#### OnCrpcBulkAccept; size of the state is: %d with crpc_id: %ld", state.size(), id);
       int start_index = ev.second->n_voted_yes_ + ev.second->n_voted_no_;
