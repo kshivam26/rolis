@@ -134,7 +134,7 @@ namespace janus
         {
             throughput_probe_lock_.lock();
             int probe = throughput_probe;
-            // Log_info("++++ inside get_throughput_probe, with par_id: %ld, probe: %d", par_id_, probe);
+            Log_info("++++ inside get_throughput_probe, with par_id: %ld, probe: %d", par_id_, probe);
             throughput_probe_lock_.unlock();
             return probe;
         }

@@ -19,7 +19,7 @@ namespace janus
     double dirProbability = 0.5;
     SpinLock dir_l_;
 
-    shared_ptr<DirectionThroughput> dir_throughput_cal;
+    static shared_ptr<DirectionThroughput> dir_throughput_cal;
     uint64_t crpc_dir_0_counter = 0;
     uint64_t crpc_dir_1_counter = 0;
 

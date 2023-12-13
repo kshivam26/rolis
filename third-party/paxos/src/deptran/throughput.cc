@@ -197,15 +197,15 @@ namespace janus
             decrement_throughput_probe();
         }
         else{
-            // Log_info("++++ UNLIKELY: The previous par_id: %ld, crpc_id: %ld and direction: %d", par_id_, request.crpc_id, direction);
+            Log_info("++++ UNLIKELY: The previous par_id: %ld, crpc_id: %ld and direction: %d", par_id_, request.crpc_id, direction);
             // witnessing that it sometimes takes 5-6 seconds for a request to come back through the slow node, in this case this code will trigger
             // This should not happen CHECK HOW TO HANDLE THIS
             if (direction == 0){
-                // Log_info("++++ UNLIKELY: par_id: %ld, prob latency very high for direction 0; decrementing prob", par_id_);
+                Log_info("++++ UNLIKELY: par_id: %ld, prob latency very high for direction 0; decrementing prob", par_id_);
                 decrement_dir_prob();
             }
             else{
-                // Log_info("++++ UNLIKELY: par_id: %ld, prob latency very high for direction 1; decrementing prob", par_id_);
+                Log_info("++++ UNLIKELY: par_id: %ld, prob latency very high for direction 1; decrementing prob", par_id_);
                 increment_dir_prob();
             }
             decrement_throughput_probe();
@@ -254,7 +254,7 @@ namespace janus
             // Log_debug("COUNTER %d", i);
             if (latency_queues[i].getLastRequest().crpc_id == crpc_id)
             {
-                // Log_info("++++ Adding end time for crpc_id: %ld and direction: %d", crpc_id, i);
+                Log_info("++++ Adding end time for crpc_id: %ld and direction: %d", crpc_id, i);
                 latency_queues[i].updateEndTime(crpc_id, chrono::system_clock::now());
                 // dir_to_throughput_calculator[i]->add_request_times(dir_to_throughput_data[i].start_time, dir_to_throughput_data[i].end_time);
                 // dir_to_throughput_data[i].crpc_id = 0;
@@ -293,7 +293,7 @@ namespace janus
             // std::uniform_int_distribution<> dis(1, 10);
             // int randomNum = dis(gen);
             // Log_info("#### The randomNum generated is: %d", randomNum);
-            auto start_ev = Reactor::CreateSpEvent<TimeoutEvent>(par_id_ * 200000); // kshivam: change it to random number later
+            auto start_ev = Reactor::CreateSpEvent<TimeoutEvent>(200000); // kshivam: change it to random number later
             start_ev->Wait();
             Log_info("#### Starting calc_latency for par_id: %ld", par_id_);
             while (loop_var)
@@ -308,9 +308,9 @@ namespace janus
                 for(int i = 0; i < latency_queues.size(); i++){
                     auto last_request = latency_queues[i].getLastRequest();
                     if(last_request.end_time == std::chrono::system_clock::time_point::max()){
-                        // Log_info("++++ Previous probing request for direction %d not returned; setting latency to current_time - start_time", i);
+                        Log_info("++++ Previous probing request for direction %d not returned; setting latency to current_time - start_time", i);
                         latency_queues[i].updateEndTime(last_request.crpc_id, chrono::system_clock::now());
-                        // Log_info("++++ calc_latency; cp0; par_id: %ld, crpc_id: %d, start_time: %ld, end_time: %ld", par_id_, last_request.crpc_id, last_request.start_time, last_request.end_time);
+                        Log_info("++++ calc_latency; cp0; par_id: %ld, crpc_id: %d, start_time: %ld, end_time: %ld", par_id_, last_request.crpc_id, last_request.start_time, last_request.end_time);
                     }
                 }
                                 
@@ -319,7 +319,7 @@ namespace janus
                 for(int i = 0; i < latency_queues.size(); i++){
                     auto last_request = latency_queues[i].getLastRequest();
                     if (chrono::duration_cast<chrono::microseconds>(current_time - last_request.start_time).count() > 1.25*timeout_period && chrono::duration_cast<chrono::microseconds>(current_time - last_request.end_time).count() > 1.2*timeout_period) {
-                        // Log_info("++++ No probing has been sent in direction %d; par_id: %ld, for quite some time now, continuing", i, par_id_);
+                        Log_info("++++ No probing has been sent in direction %d; par_id: %ld, for quite some time now, continuing", i, par_id_);
                         shouldContinue = true;
                     }
                 }
@@ -350,16 +350,16 @@ namespace janus
                     // Log_info("par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat > temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
                     // dir_prob = std::max(0.0, dir_prob - 0.1);
                     decrement_dir_prob(temp_dir_1_lat/temp_dir_2_lat);
-                    // Log_info("++++ par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat > temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
-                    // Log_info("++++ par_id: %ld, current direction_prob is: %f", par_id_, dir_prob);
+                    Log_info("++++ par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat > temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
+                    Log_info("++++ par_id: %ld, current direction_prob is: %f", par_id_, dir_prob);
                 }
                 else
                 {
                     // Log_info("par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat < temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
                     // dir_prob = std::min(1.0, dir_prob + 0.1);
                     increment_dir_prob(temp_dir_2_lat/temp_dir_1_lat);
-                    // Log_info("++++ par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat < temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
-                    // Log_info("++++ par_id: %ld, current direction_prob is: %f", par_id_, dir_prob);
+                    Log_info("++++ par_id: %ld, temp_dir_1_lat: %f; temp_dir_2_lat: %f; temp_dir_1_lat < temp_dir_2_lat", par_id_, temp_dir_1_lat, temp_dir_2_lat);
+                    Log_info("++++ par_id: %ld, current direction_prob is: %f", par_id_, dir_prob);
                 }
             } });
     }
@@ -368,11 +368,11 @@ namespace janus
         double result = log10(factorToDecrement)*0.1;
         if (dir_prob == 1.0){ // kshivam-tp: simplify this
             if(result < 0.1){
-                // Log_info("++++ dir_prob is at maximum, and result:%f is less than the threshold to decrement; returning", result);
+                Log_info("++++ dir_prob is at maximum, and result:%f is less than the threshold to decrement; returning", result);
                 return;
             }
             else{
-                // Log_info("++++ dir_prob is at maximum, and but result:%f is more than the threshold to decrement; continuing", result);
+                Log_info("++++ dir_prob is at maximum, and but result:%f is more than the threshold to decrement; continuing", result);
             }
         }
         dir_prob = std::max(0.0, dir_prob - result);
@@ -382,11 +382,11 @@ namespace janus
         double result = log10(factorToIncrement)*0.1;
         if (dir_prob == 0.0){
             if(result < 0.1){
-                // Log_info("++++ dir_prob is at minimum, and result:%f is less than the threshold to increment; returning", result);
+                Log_info("++++ dir_prob is at minimum, and result:%f is less than the threshold to increment; returning", result);
                 return;
             }
             else{
-                // Log_info("++++ dir_prob is at minimum, and but result:%f is more than the threshold to increment; continuing", result);
+                Log_info("++++ dir_prob is at minimum, and but result:%f is more than the threshold to increment; continuing", result);
             }
         }
         dir_prob = std::min(1.0, dir_prob + result);
@@ -394,7 +394,7 @@ namespace janus
     
     double DirectionThroughput::get_dir_prob()
     {
-        // Log_info("++++ Direction Probability is %f", dir_prob);
+        Log_info("++++ Direction Probability is %f", dir_prob);
         return dir_prob;
     }
 
