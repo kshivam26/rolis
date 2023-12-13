@@ -14,6 +14,7 @@ namespace janus
   MultiPaxosCommo::MultiPaxosCommo(PollMgr *poll) : Communicator(poll)
   {
     //  verify(poll != nullptr);
+    Log_info("#### Initializing MultiPaxosCommo");
     dir_throughput_cal = make_shared<DirectionThroughput>();
   }
 
@@ -429,7 +430,7 @@ namespace janus
 
     if (!hasPrinted)
     {
-      Log_debug("in no cRPC;");
+      Log_info("in no cRPC;");
       // Log_debug("in no cRPC; tid of leader is %d", gettid());
       hasPrinted = true; // Update the static variable
     }
@@ -475,15 +476,10 @@ namespace janus
 
     if (!hasPrinted)
     {
-      // Log_info("in cRPC;");
+      Log_info("in cRPC;");
       // Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
       hasPrinted = true; // Update the static variable
-
-      //     if (std::is_same<long, i64>::value) {
-      //       std::cout << "i64 is a long\n";
-      //     } else {
-      //       std::cout << "i64 is a long long\n";
-      //     }
+      // dir_throughput_cal->calc_latency(par_id); // dynamic: uncomment
     }
     int n = Config::GetConfig()->GetPartitionSize(par_id);
     int k = (n % 2 == 0) ? n / 2 : (n / 2 + 1);
@@ -494,48 +490,84 @@ namespace janus
 
     sitesInfo_.push_back(leader_site_id);
 
-    auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
-    if (current_throughput_probe_status >= 0)
-    {
-      if (current_throughput_probe_status == 0)
-      {
-        direction = true;
-        for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
-        {
-          auto id = it->first; // Access the element through the reverse iterator
-          if (id != leader_site_id)
-          {
-            sitesInfo_.push_back(id);
-          }
-        }
-      }
-      else if (current_throughput_probe_status == 1)
-      {
-        for (auto &p : proxies)
-        {
-          direction = false;
-          auto id = p.first;
-          // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
-          if (id != leader_site_id)
-          {                           // #cPRC additional
-            sitesInfo_.push_back(id); // #cPRC additional
-          }                           // #cPRC additional
-        }
-      }
-    }
-    else 
-    {
-      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-      std::default_random_engine generator(seed);
-      std::uniform_real_distribution<double> distribution(0.0, 1.0);
-      double randomValue = distribution(generator);
-      auto tempDirProbability = dir_throughput_cal->get_dir_prob();
-      if (randomValue < tempDirProbability)
-      // if (direction)
+    // dynamic: uncomment
+    // auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+    // // Log_info("++++ par_id: %ld; current_throughput_probe_status: %d", par_id, current_throughput_probe_status);
+    // if (current_throughput_probe_status >= 0)
+    // {
+    //   // Log_info("++++ par_id: %ld; inside cp1", par_id);
+    //   if (current_throughput_probe_status == 0)
+    //   {
+    //     direction = true;
+    //     for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+    //     {
+    //       auto id = it->first; // Access the element through the reverse iterator
+    //       if (id != leader_site_id)
+    //       {
+    //         sitesInfo_.push_back(id);
+    //       }
+    //     }
+    //   }
+    //   else if (current_throughput_probe_status == 1)
+    //   {
+    //     for (auto &p : proxies)
+    //     {
+    //       direction = false;
+    //       auto id = p.first;
+    //       // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+    //       if (id != leader_site_id)
+    //       {                           // #cPRC additional
+    //         sitesInfo_.push_back(id); // #cPRC additional
+    //       }                           // #cPRC additional
+    //     }
+    //   }
+    // }
+    // else 
+    // {
+    //   // Log_info("++++ par_id: %ld; inside cp2", par_id);
+    //   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    //   std::default_random_engine generator(seed);
+    //   std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    //   double randomValue = distribution(generator);
+    //   auto tempDirProbability = dir_throughput_cal->get_dir_prob();
+    //   // Log_info("++++ par_id: %d; current dirProbability: %f", par_id, tempDirProbability);
+    //   // Log_info("++++ par_id: %d; current randomValue: %f", par_id, randomValue);
+    //   if (randomValue < tempDirProbability)
+    //   {
+    //     // Log_info("In first direction");
+    //     // This is used for marking the direction in which the request is sent
+    //     direction = true;
+    //     for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
+    //     {
+    //       auto id = it->first; // Access the element through the reverse iterator
+    //       if (id != leader_site_id)
+    //       {
+    //         sitesInfo_.push_back(id);
+    //       }
+    //     }
+    //   }
+    //   else
+    //   {
+    //     direction = false;
+    //     // Log_info("In second direction");
+    //     for (auto &p : proxies)
+    //     {
+    //       auto id = p.first;
+    //       // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
+    //       if (id != leader_site_id)
+    //       {                           // #cPRC additional
+    //         sitesInfo_.push_back(id); // #cPRC additional
+    //       }                           // #cPRC additional
+    //     }
+    //   }
+    // }
+
+    // dynamic: comment
+    if (direction)
       {
         // Log_info("In first direction");
         // This is used for marking the direction in which the request is sent
-        direction = true;
+        direction = false;
         for (auto it = proxies.rbegin(); it != proxies.rend(); ++it)
         {
           auto id = it->first; // Access the element through the reverse iterator
@@ -547,7 +579,7 @@ namespace janus
       }
       else
       {
-        direction = false;
+        direction = true;
         // Log_info("In second direction");
         for (auto &p : proxies)
         {
@@ -559,15 +591,7 @@ namespace janus
           }                           // #cPRC additional
         }
       }
-    }
-
-
-    if (crpc_id_counter == 0)
-    {
-      // call calc_latency only once
-      dir_throughput_cal->calc_latency();
-    }
-    // Normal CRPC code without directions
+    // Normal CRPC code without directions // dynamic: comment
     // for (auto &p : proxies)
     // {
     //   auto id = p.first;
@@ -576,6 +600,14 @@ namespace janus
     //   {                           // #cPRC additional
     //     sitesInfo_.push_back(id); // #cPRC additional
     //   }                           // #cPRC additional
+    // }
+    // for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) // dynamic: comment
+    // {
+    //   auto id = it->first; // Access the element through the reverse iterator
+    //   if (id != leader_site_id)
+    //   {
+    //     sitesInfo_.push_back(id);
+    //   }
     // }
 
     sitesInfo_.push_back(leader_site_id);
@@ -595,36 +627,40 @@ namespace janus
         // int sizeB = sizeof(uint64_t);
         // verify(sizeA == sizeB);
         uint64_t crpc_id = ++crpc_id_counter;
-        auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
-        if (current_throughput_probe_status >= 0)
-        {
-          // Mark this crpc_id in the store based on direction
-          if (direction)
-          {
-            dir_throughput_cal->add_request_start_time(crpc_id, 0);
-          }
-          else
-          {
-            dir_throughput_cal->add_request_start_time(crpc_id, 1);
-          }
-        }
-        if (direction)
-        {
-          crpc_dir_0_counter++;
-        }
-        else 
-        {
-          crpc_dir_1_counter++;
-        }
-        Log_info("CRPC DIR 0 COUNTER: %d", crpc_dir_0_counter);
-        Log_info("CRPC DIR 1 COUNTER: %d", crpc_dir_1_counter);
-        // Log_info("#### MultiPaxosCommo::; par_id: %d,  crpc_id is: %d", par_id, crpc_id); // verify it's never the same
-        // uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
-        // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
+
+        // dynamic: uncomment
+        // auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
+        // if (current_throughput_probe_status >= 0)
+        // {
+        //   // Mark this crpc_id in the store based on direction
+        //   if (direction)
+        //   {      
+        //     // Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 0", par_id, crpc_id);      
+        //     dir_throughput_cal->add_request_start_time(crpc_id, 0);
+        //   }
+        //   else
+        //   {
+        //     // Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 1", par_id, crpc_id);
+        //     dir_throughput_cal->add_request_start_time(crpc_id, 1);
+        //   }
+        // }
+        // if (direction)
+        // {
+        //   crpc_dir_0_counter++;
+        // }
+        // else 
+        // {
+        //   crpc_dir_1_counter++;
+        // }
+
+        // Log_info("++++ par_id: %ld, CRPC DIR 0 COUNTER: %d", par_id, crpc_dir_0_counter);
+        // Log_info("++++ par_id: %ld, CRPC DIR 1 COUNTER: %d", par_id, crpc_dir_1_counter);
+
         cRPCEvents_l_.lock();
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
+        // Log_info("++++ sending request par_id: %ld, crpc_id: %ld and direction: %d", par_id, crpc_id, !direction);
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
         Future::safe_release(f);
         break;

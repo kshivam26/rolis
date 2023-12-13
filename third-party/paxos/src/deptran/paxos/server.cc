@@ -613,17 +613,11 @@ namespace janus
                                      const std::vector<BalValResult> &state)
   {
     parid_t par_id = this->frame_->site_info_->partition_id_;
-    // Log_info("#### inside paxosServer::OnCrpcBulkAccept, with par_id: %d, crpc_id: %ld;", par_id, id);
+    Log_info("++++ inside paxosServer::OnCrpcBulkAccept, with par_id: %d, crpc_id: %ld;", par_id, id);
     if (addrChain.size() == 1)
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);
       auto x = (MultiPaxosCommo *)(this->commo_);
-      // if (first_time)
-      // {
-      //   x->dir_throughput_cal->calc_latency();
-      //   first_time = false;
-      // }
-      // verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
       x->cRPCEvents_l_.lock();
       if (x->cRPCEvents.find(id) == x->cRPCEvents.end())
       {
@@ -635,7 +629,7 @@ namespace janus
       x->cRPCEvents.erase(id);
       x->cRPCEvents_l_.unlock();
 
-      x->dir_throughput_cal->add_request_end_time(id);
+      // x->dir_throughput_cal->add_request_end_time(id); // dynamic: uncomment
       
       // Log_info("#### OnCrpcBulkAccept; size of the state is: %d with crpc_id: %ld", state.size(), id);
       int start_index = ev.second->n_voted_yes_ + ev.second->n_voted_no_;
@@ -1035,14 +1029,16 @@ namespace janus
       if (this->leader_id != this->loc_id_ && dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
         Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; going to sleep for 300ms", partition_id_);
         *valid = 1;
-        cb();
-        auto x = (MultiPaxosCommo *)(this->commo_);
-        x->dir_throughput_cal->loop_var = false;
+        cb();        
         auto commit_wait_event = Reactor::CreateSpEvent<TimeoutEvent>(10000000); // kshivam; may result in error, because still the requests may not have been processed completely.
         commit_wait_event->Wait();
         Log_info("################### BulkCommit; par_id: %d, trying to execute the kill command; woke up from sleep after 300ms", partition_id_);
         app_next_(*commit_exec[i]->committed_cmd_);
         return;
+      }
+      if (this->leader_id == this->loc_id_ && dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
+        auto x = (MultiPaxosCommo *)(this->commo_);
+        x->dir_throughput_cal->loop_var = false;
       }
       
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here
