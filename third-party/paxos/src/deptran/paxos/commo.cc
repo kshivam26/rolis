@@ -504,9 +504,9 @@ namespace janus
     // dynamic: uncomment
     if (dynamic){
       auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
-      Log_info("++++ par_id: %ld; current_throughput_probe_status: %d", par_id, current_throughput_probe_status);
+      // Log_info("++++ par_id: %ld; current_throughput_probe_status: %d", par_id, current_throughput_probe_status);
       if (par_id == 0 && current_throughput_probe_status >= 0) {
-        Log_info("++++ par_id: %ld; inside cp1", par_id);
+        // Log_info("++++ par_id: %ld; inside cp1", par_id);
         if (current_throughput_probe_status == 0) {
           direction = true;
           for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) {
@@ -528,14 +528,14 @@ namespace janus
         }
       }
       else {
-        Log_info("++++ par_id: %ld; inside cp2", par_id);
+        // Log_info("++++ par_id: %ld; inside cp2", par_id);
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::default_random_engine generator(seed);
         std::uniform_real_distribution<double> distribution(0.0, 1.0);
         double randomValue = distribution(generator);
         auto tempDirProbability = dir_throughput_cal->get_dir_prob();
-        Log_info("++++ par_id: %d; current dirProbability: %f", par_id, tempDirProbability);
-        Log_info("++++ par_id: %d; current randomValue: %f", par_id, randomValue);
+        // Log_info("++++ par_id: %d; current dirProbability: %f", par_id, tempDirProbability);
+        // Log_info("++++ par_id: %d; current randomValue: %f", par_id, randomValue);
         if (randomValue < tempDirProbability) {
           // Log_info("In first direction");
           // This is used for marking the direction in which the request is sent
@@ -629,11 +629,11 @@ namespace janus
           if (par_id == 0 && current_throughput_probe_status >= 0) {
             // Mark this crpc_id in the store based on direction
             if (direction) {      
-              Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 0", par_id, crpc_id);      
+              // Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 0", par_id, crpc_id);      
               dir_throughput_cal->add_request_start_time(crpc_id, 0);
             }
             else {
-              Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 1", par_id, crpc_id);
+              // Log_info("++++ calling start time for par_id: %ld, crpc_id: %ld and direction: 1", par_id, crpc_id);
               dir_throughput_cal->add_request_start_time(crpc_id, 1);
             }
           }
@@ -644,14 +644,14 @@ namespace janus
             crpc_dir_1_counter++;
           }
 
-          Log_info("++++ par_id: %ld, CRPC DIR 0 COUNTER: %d", par_id, crpc_dir_0_counter);
-          Log_info("++++ par_id: %ld, CRPC DIR 1 COUNTER: %d", par_id, crpc_dir_1_counter);
+          // Log_info("++++ par_id: %ld, CRPC DIR 0 COUNTER: %d", par_id, crpc_dir_0_counter);
+          // Log_info("++++ par_id: %ld, CRPC DIR 1 COUNTER: %d", par_id, crpc_dir_1_counter);
         }
         cRPCEvents_l_.lock();
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
-        Log_info("++++ sending request par_id: %ld, crpc_id: %ld and direction: %d", par_id, crpc_id, !direction);
+        // Log_info("++++ sending request par_id: %ld, crpc_id: %ld and direction: %d", par_id, crpc_id, !direction);
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
         Future::safe_release(f);
         break;

@@ -613,7 +613,7 @@ namespace janus
                                      const std::vector<BalValResult> &state)
   {
     parid_t par_id = this->frame_->site_info_->partition_id_;
-    Log_info("++++ inside paxosServer::OnCrpcBulkAccept, with par_id: %d, crpc_id: %ld;", par_id, id);
+    // Log_info("++++ inside paxosServer::OnCrpcBulkAccept, with par_id: %d, crpc_id: %ld;", par_id, id);
     if (addrChain.size() == 1)
     {
       // Log_info("#### inside paxosServer::OnCrpcBulkAccept, inside chain , with par_id: %d, crpc_id: %ld;", par_id, id);

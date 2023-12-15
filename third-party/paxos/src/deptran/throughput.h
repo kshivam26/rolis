@@ -67,11 +67,11 @@ namespace janus
         DirectionThroughput() {init_directions(2);}
         DirectionThroughput(const DirectionThroughput &) {init_directions(2);}
         // ~ThroughPutManager();
-
+        
         vector<LatencyQueue> latency_queues;
         vector<ThroughputCalculator*> dir_to_throughput_calculator;
         vector<RequestData> dir_to_throughput_data;
-        
+        int timeout_period = 1000000;
         SpinLock throughput_probe_lock_;
         int throughput_probe = -1;
         bool loop_var = true;
@@ -84,6 +84,8 @@ namespace janus
         void increment_dir_prob(double factorToIncrement=0.5);
         void calc_latency(parid_t par_id);
 
+        void incrementTimeout();
+        void resetTimeout();
         double get_dir_prob();
 
         // double get_latency(uint64_t direction);
@@ -134,7 +136,7 @@ namespace janus
         {
             throughput_probe_lock_.lock();
             int probe = throughput_probe;
-            Log_info("++++ inside get_throughput_probe, with par_id: %ld, probe: %d", par_id_, probe);
+            // Log_info("++++ inside get_throughput_probe, with par_id: %ld, probe: %d", par_id_, probe);
             throughput_probe_lock_.unlock();
             return probe;
         }
