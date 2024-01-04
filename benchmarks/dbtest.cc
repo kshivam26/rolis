@@ -72,6 +72,7 @@ main(int argc, char **argv) {
     vector<string> logfiles;
     vector<vector<unsigned>> assignments;
     string stats_server_sockfile;
+    int crpc_option;
     // track latency: advanceGTracker, latestG
     std::vector<std::pair<uint64_t, uint64_t>> advanceGTracker;  // G => updated time
     uint64_t latestG = 0;
@@ -99,6 +100,7 @@ main(int argc, char **argv) {
                         {"disable-snapshots",            no_argument,       &disable_snapshots,           1},
                         {"no-reset-counters",            no_argument,       &no_reset_counters,           1},
                         {"use-hashtable",                no_argument,       &use_hashtable,               1},
+                        {"crpc",                         optional_argument, 0,                            'q'},
                         {"p-batch-size",                 optional_argument, 0,                            'A'},
                         {"assignment",                   required_argument, 0,                            'a'},
                         {"basedir",                      required_argument, 0,                            'B'},
@@ -120,7 +122,7 @@ main(int argc, char **argv) {
                         {0, 0,                                              0,                            0}
                 };
         int option_index = 0;
-        int c = getopt_long(argc, argv, "b:s:t:d:z:B:f:r:n:o:m:l:a:e:x:F:A:S:P:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "b:s:t:d:z:B:f:r:n:o:m:l:a:e:x:F:A:S:P:q:", long_options, &option_index);
         if (c == -1)
             break;
 
@@ -216,7 +218,10 @@ main(int argc, char **argv) {
             case 'F':
                 paxos_config_file.push_back(optarg);
                 break;
-
+            case 'q':
+                std::cout << "got the q option" << std::endl;
+                crpc_option = strtoul(optarg, NULL, 10);
+                break;
             case '?':
                 /* getopt_long already printed an error message. */
                 exit(1);
@@ -451,7 +456,7 @@ main(int argc, char **argv) {
         stats_server *srvr = new stats_server(stats_server_sockfile);
         thread(&stats_server::serve_forever, srvr).detach();
     }
-    int argc_paxos = 18;
+    int argc_paxos = 20;
     int k = 0;
     char *argv_paxos[argc_paxos];
     if (paxos_config_file.size() < 2) {
@@ -478,7 +483,12 @@ main(int argc, char **argv) {
     argv_paxos[17] = new char[20];
     memset(argv_paxos[17], '\0', 20);
     sprintf(argv_paxos[17], "%d", kPaxosBatchSize);
-
+    argv_paxos[18] = (char *) "-q";
+    argv_paxos[19] = new char[20];
+    memset(argv_paxos[19], '\0', 20);
+    sprintf(argv_paxos[19], "%d", crpc_option);
+    
+    std::cout << "crpc_option?: " << argv_paxos[19] << " :::: " << crpc_option << std::endl;
     std::cout << "paxos batch=" << argv_paxos[17] << " :::: " << kPaxosBatchSize << std::endl;
 
     if (leader_config) {
@@ -731,7 +741,7 @@ main(int argc, char **argv) {
       if (g != numeric_limits<uint64_t>::max() && g > latestG) {
           latestG = g ;
 #if defined(LATENCY)
-          advanceGTracker.push_back(std::make_pair(g, timer::cur_usec() )) ;
+          advanceGTracker.push_back(std::make_pair(g, timer::cur_usec() )) ; // kshivam: latency calculation
 #endif
       }
 #endif
@@ -907,6 +917,7 @@ main(int argc, char **argv) {
     OutputDataSerializer::GetLogger(9888, LOGGING_CONST::WHOLE_INFO_STRING)->MapWriter(ref_output);
 #endif
 
+// kshivam: latency calculation
 #if defined(LATENCY)
     if(leader_config || !multi_process) {
         uint64_t latency_ts = 0;

@@ -73,13 +73,17 @@ int Config::CreateConfig(int argc, char **argv) {
   int c;
   optind = 1;
   string filename;
-  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:A:")) != -1) {
+  
+  Log_info("size of argv is: %d", argc);
+  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:A:q:")) != -1) {
+    Log_info("#### config:cp1; c: %d", c);
     switch (c) {
       case 'b': // heartbeat to controller
         heart_beat = true;
         break;
       case 'A':
         bulkBatchCount = strtoul(optarg, &end_ptr, 10);
+        Log_info("#### The count is: %d", bulkBatchCount);
 		break;
       case 'd': // duration
         duration = strtoul(optarg, &end_ptr, 10);
@@ -139,8 +143,8 @@ int Config::CreateConfig(int argc, char **argv) {
         // kshivam remove
         is_crpc_enabled = strtoul(optarg, &end_ptr, 10);
         Log_info("the cRPC version is: %d", is_crpc_enabled);
-        if ((end_ptr == NULL) || (*end_ptr != '\0'))
-          return -4;
+        // if ((end_ptr == NULL) || (*end_ptr != '\0'))
+        //   return -4;
         break;
       case 's': // site id
         // TODO remove
@@ -989,7 +993,7 @@ int32_t Config::get_tot_req() {
   return tot_req_num_;
 }
 
-uint32_t Config::isCrpcEnabled() {
+uint32_t Config::getRoutingOption() {
   return is_crpc_enabled_;
 }
 

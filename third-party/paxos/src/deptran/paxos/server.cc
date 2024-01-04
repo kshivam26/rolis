@@ -344,6 +344,8 @@ namespace janus
     mtx_.lock();
     if (cur_b < cur_epoch)
     {
+      // kshivam: generally not called; UNLIKELY
+      // Log_info("++++ inside OnBulkPrepare2; cp1; setting ballot to: %d", cur_epoch);
       *ballot = cur_epoch;
       // es->state_unlock();
       *valid = 0;
@@ -363,6 +365,7 @@ namespace janus
     max_touched_slot = max(max_touched_slot, cur_slot);
     if (cur_b > cur_epoch)
     {
+      // Log_info("++++ inside OnBulkPrepare2; cp2;");
       mtx_.unlock();
       es->state_lock();
       es->set_epoch(cur_b);
@@ -391,6 +394,23 @@ namespace janus
   auto instance = GetInstance(cur_slot);
   Log_debug("OnBulkPrepare2: Checks successfull preparing response for slot %d %d", cur_slot, partition_id_);
   if(!instance || !instance->accepted_cmd_){
+    // kshivam: if a node is slow, it may receive/process accepted cmd before it processes the prepare request, and thus may not execute this
+    mtx_.unlock();
+    *valid = 2;
+    *ballot = cur_b;
+    //*ret_cmd = *bcmd;
+    // ret_cmd->ballots.push_back(bcmd->ballots[0]);
+    // ret_cmd->slots.push_back(bcmd->slots[0]);
+    // ret_cmd->cmds.push_back(bcmd->cmds[0]);
+    //Log_info("OnBulkPrepare2: the kind_ of the response object is");
+    //es->state_unlock();
+    cb();
+    //es->state_unlock();
+    return;
+  }
+  // kshivam: delete the else condition; added because of previous comment in if
+  else{
+    // Log_info("++++ UNLIKELY: may only happen in case chaining?");
     mtx_.unlock();
     *valid = 2;
     *ballot = cur_b;

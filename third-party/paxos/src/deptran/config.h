@@ -232,7 +232,7 @@ class Config {
   bool do_logging();
   bool IsReplicated();
   int32_t get_tot_req();
-  uint32_t isCrpcEnabled();
+  uint32_t getRoutingOption();
   const char *log_path();
 
   bool retry_wait();

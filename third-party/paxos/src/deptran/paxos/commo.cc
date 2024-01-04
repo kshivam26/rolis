@@ -195,7 +195,11 @@ namespace janus
         i32 ballot;
         MarshallDeputy response_val;
         fu->get_reply() >> ballot >> valid >> response_val;
-        // Log_info("BroadcastPrepare2: received response: %d %d", ballot, valid);
+        // Log_info("++++ BroadcastPrepare2: received response: %d %d", ballot, valid);
+        // if (valid == 1)
+        //   Log_info("++++ valid received is 1; BroadcastPrepare2: received response: %d %d with gettid: %d", ballot, valid, gettid());
+        // if (!response_val.sp_data_)
+        //   Log_info("++++ response_val.sp_data_ is null");
         cb(response_val, ballot, valid);
         e->FeedResponse(valid);
       };
@@ -473,22 +477,23 @@ namespace janus
     // Log_info("**** inside CrpcBroadcastBulkAccept, with par_id: %d", par_id);
     // Log_info("**** inside CrpcBroadcastBulkAccept, with size of cmd is: %d", sizeof(cmd));
     // static bool hasPrinted = false;  // Static variable to track if it has printed
-    bool dynamic = true;
-    bool alternate = false;
-    bool slow = false;
-    bool fast = false;
+
+    // bool dynamic = true;
+    // bool alternate = false;
+    // bool slow = false;
+    // bool fast = false;
 
     if (!hasPrinted)
     {
       Log_info("in cRPC;");
-      if (dynamic){
+      if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
         Log_info("#### dynamic routing");
         if (par_id == 0) 
           dir_throughput_cal->calc_latency(par_id); // dynamic: uncomment
       } 
-      else if (alternate) Log_info("#### alternate routing");
-      else if (slow) Log_info("#### slow routing");
-      else if (fast) Log_info("#### fast routing");
+      else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::ALTERNATE)) Log_info("#### alternate routing");
+      else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::SLOW)) Log_info("#### slow routing");
+      else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::FAST)) Log_info("#### fast routing");
       // Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
       hasPrinted = true; // Update the static variable      
     }
@@ -502,7 +507,7 @@ namespace janus
     sitesInfo_.push_back(leader_site_id);
 
     // dynamic: uncomment
-    if (dynamic){
+    if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
       auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
       // Log_info("++++ par_id: %ld; current_throughput_probe_status: %d", par_id, current_throughput_probe_status);
       if (par_id == 0 && current_throughput_probe_status >= 0) {
@@ -562,7 +567,7 @@ namespace janus
     }
 
     // dynamic: comment
-    if (alternate){
+    if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::ALTERNATE)){
       if (direction) {
         // Log_info("In first direction");
         // This is used for marking the direction in which the request is sent
@@ -589,7 +594,7 @@ namespace janus
       }
     }
     // Normal CRPC code without directions // dynamic: comment
-    if (fast){
+    if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::FAST)){
       for (auto &p : proxies) {
         auto id = p.first;
         // Log_info("**** id is: %d and leader_site_id is: %d", id, leader_site_id);
@@ -598,7 +603,7 @@ namespace janus
         }                           
       }
     }
-    if (slow){
+    if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::SLOW)){
       for (auto it = proxies.rbegin(); it != proxies.rend(); ++it) { // dynamic: comment 
         auto id = it->first; // Access the element through the reverse iterator
         if (id != leader_site_id) {
@@ -624,7 +629,7 @@ namespace janus
         uint64_t crpc_id = ++crpc_id_counter;
 
         // dynamic: uncomment
-        if (dynamic){
+        if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
           auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
           if (par_id == 0 && current_throughput_probe_status >= 0) {
             // Mark this crpc_id in the store based on direction

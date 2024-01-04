@@ -293,8 +293,8 @@ namespace janus
             // std::uniform_int_distribution<> dis(1, 10);
             // int randomNum = dis(gen);
             // Log_info("#### The randomNum generated is: %d", randomNum);
-            auto start_ev = Reactor::CreateSpEvent<TimeoutEvent>(200000); // kshivam: change it to random number later
-            start_ev->Wait();
+            // auto start_ev = Reactor::CreateSpEvent<TimeoutEvent>(200000); // kshivam: change it to random number later
+            // start_ev->Wait();
             Log_info("#### Starting calc_latency for par_id: %ld", par_id_);
             while (loop_var)
             {
@@ -369,13 +369,6 @@ namespace janus
         auto prevValue = dir_prob;
         if (dir_prob == 1.0 && result < 0.1){ // kshivam-tp: simplify this
             return;
-            // if(result < 0.1){
-            //     // Log_info("++++ dir_prob is at maximum, and result:%f is less than the threshold to decrement; returning", result);
-            //     return;
-            // }
-            // else{
-            //     // Log_info("++++ dir_prob is at maximum, and but result:%f is more than the threshold to decrement; continuing", result);
-            // }
         }
         dir_prob = std::max(0.0, dir_prob - result);
         if (prevValue == 0.0 && dir_prob == 0.0){
@@ -391,13 +384,6 @@ namespace janus
         auto prevValue = dir_prob;
         if (dir_prob == 0.0 && result < 0.1){
             return;
-            // if(result < 0.1){
-            //     // Log_info("++++ dir_prob is at minimum, and result:%f is less than the threshold to increment; returning", result);
-            //     return;
-            // }
-            // else{
-            //     // Log_info("++++ dir_prob is at minimum, and but result:%f is more than the threshold to increment; continuing", result);
-            // }
         }        
         dir_prob = std::min(1.0, dir_prob + result);
         if (prevValue == 1.0 && dir_prob == 1.0){

@@ -289,6 +289,7 @@ namespace janus
 
   void BulkCoordinatorMultiPaxos::Prepare()
   {
+    // Log_info("++++ cp1; the size of vec_md: %d with gettid: %d", this->vec_md.size(), gettid());
     // std::lock_guard<std::recursive_mutex> lock(mtx_);
     in_prepare_ = true;
     // curr_ballot_ = PickBallot();
@@ -323,8 +324,14 @@ namespace janus
       this->in_submission_ = false;
     } else{
       //Log_debug("Valid value received for prepare %d", bt);
-      if(valid == 1)
+      
+      if(valid == 1){
+        // Log_info("#### inside Prepare(); cp1");
+        // if (!md.sp_data_)
+        //   Log_info("#### inside Prepare(); cp2; null sp");
+        // Log_info("++++ cp2; the size of vec_md: %d with gettid: %d", this->vec_md.size(), gettid());
         this->vec_md.push_back(make_pair(bt, md.sp_data_));
+      }
       // Weihai: comment, this line will cause an seg fault
       //else
       //  this->vec_md.push_back(make_pair(bt, cmd_));
@@ -387,8 +394,10 @@ namespace janus
     shared_ptr<PaxosAcceptQuorumEvent> sp_quorum = nullptr;
 
     Log_debug("****wait started for pard_id: %d", par_id_);
-    if (false) {
-      //  if (!Config::GetConfig()->isCrpcEnabled()){
+    // auto val = Config::GetConfig()->getRoutingOption();
+    // Log_info("#### The value of isCrpcEnabled:%d", val);
+    // if (false) {
+       if (!Config::GetConfig()->getRoutingOption()){
       // Log_debug("is_crpc_enabled is false; calling BroadcastBulkAccept");
       sp_quorum = commo()->BroadcastBulkAccept(par_id_, cmd_, [this, ess_cc](ballot_t ballot, int valid)
                                                {

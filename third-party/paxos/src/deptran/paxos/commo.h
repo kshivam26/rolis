@@ -14,6 +14,13 @@ namespace janus
   class MultiPaxosCommo : public Communicator
   {
   public:
+    enum class RoutingOptions {
+        BROADCAST, // 0
+        DYNAMIC, // 1
+        ALTERNATE, // 2
+        SLOW, // 3
+        FAST // 4
+    };
     uint64_t crpc_id_counter = 0;
     bool direction = false;
     double dirProbability = 0.5;
