@@ -84,7 +84,6 @@ public:
     PollMgr(int n_threads = 1);
     PollMgr(const PollMgr&) = delete;
     PollMgr& operator=(const PollMgr&) = delete;
-    pthread_t* GetPthreads(int);
 
     void add(Pollable*);
     void remove(Pollable*);

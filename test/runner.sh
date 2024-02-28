@@ -43,7 +43,7 @@ function test_silo_only
 function test_failure
 {
   sudo pkill -f dbtest
-  ./multi-failover.sh
+  ./multi.sh
   ./multi_recover_b0.sh 2
   sleep 1
   ./multi_recover_b1.sh 2

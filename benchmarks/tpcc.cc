@@ -45,8 +45,6 @@ using namespace util;
   x(stock_data) \
   x(warehouse)
 
-int batch_size=1000;
-
 static inline ALWAYS_INLINE size_t
 NumWarehouses()
 {
@@ -152,15 +150,10 @@ static int g_disable_read_only_scans = 0;
 static int g_enable_partition_locks = 0;
 static int g_enable_separate_tree_per_partition = 0;
 static int g_new_order_remote_item_pct = 1;
+static int g_new_order_fast_id_gen = 1;
 static int g_uniform_item_dist = 0;
 static int g_order_status_scan_hack = 0;
-#if defined(SKEWED)
-static int g_new_order_fast_id_gen = 0;
-static unsigned g_txn_workload_mix[] = { 100, 0, 0, 0, 0 }; // 100% new-order, 4 warehouses and disable fast-id
-#else
-static int g_new_order_fast_id_gen = 1;
 static unsigned g_txn_workload_mix[] = { 45, 43, 4, 4, 4 }; // default TPC-C workload mix
-#endif
 static int g_item_zipf_co = -1; // negative means no zipf distribution, nomarlly 0-100
 
 static aligned_padded_elem<spinlock> *g_partition_locks = nullptr;
@@ -648,13 +641,6 @@ private:
   string obj_key0;
   string obj_key1;
   string obj_v;
-
-  // track the offsets from clients
-  int offset_new_order=0;
-  int offset_payment=0;
-  int offset_delivery=0;
-  int offset_order_status=0;
-  int offset_stock_level=0;
 };
 
 class tpcc_warehouse_loader : public bench_loader, public tpcc_worker_mixin {
@@ -1018,7 +1004,6 @@ protected:
               const customer::key k_balance(w, d + 100, c);
 
               customer_balance::value v_balance;
-
               customer::value v;
               v.c_discount = (float) (RandomNumber(r, 1, 5000) / 10000.0);
               if (RandomNumber(r, 1, 100) <= 10)
@@ -1261,52 +1246,25 @@ static event_counter evt_tpcc_cross_partition_payment_txns("tpcc_cross_partition
 tpcc_worker::txn_result
 tpcc_worker::txn_new_order()
 {
-#ifdef NETWORK_CLIENT
-  std::vector<std::vector<int>> *req = nc_get_new_order_requests(worker_id%nthreads);
-  int i=0;
-  while (req->size() < offset_new_order + 1 && i <1000) {
-    usleep(1 * 1000) ;
-    i++;
-  }
-  if (i>=1000) {
-    std::cout << "new_order waits 1 second\n";
-    return txn_result(true, 0); 
-  }
-  vector<int32_t> data = req->at(offset_new_order++);
-  int cursor=0;
-#endif
-
-#ifdef NETWORK_CLIENT
-for (int i=0; i<batch_size; i++) {
-  const uint warehouse_id = data[cursor++];
-  const uint districtID = data[cursor++];
-  const uint customerID = data[cursor++];
-  const uint numItems = data[cursor++];
-
-  uint itemIDs[15], supplierWarehouseIDs[15], orderQuantities[15];
-  bool allLocal = true;
-
-  for (uint i = 0; i < numItems; i++) {
-    itemIDs[i] = data[cursor++];
-    supplierWarehouseIDs[i] = data[cursor++];
-    if (supplierWarehouseIDs[i] != warehouse_id) allLocal=false;
-    orderQuantities[i] = data[cursor++];
-  }
-  
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, 10);
   const uint customerID = GetCustomerId(r);
   const uint numItems = RandomNumber(r, 5, 15);
-
   uint itemIDs[15], supplierWarehouseIDs[15], orderQuantities[15];
   bool allLocal = true;
 
   for (uint i = 0; i < numItems; i++) {
-    itemIDs[i] = GetItemId(r);
+    if (false) {
+//    if (g_item_zipf_co >= 0) {
+//      ALWAYS_ASSERT(g_item_zipf_co == 100);
+//      ALWAYS_ASSERT(g_item_zipf_co/100.0 == 1.0);
+//      thread_local static ZipfDist d(g_item_zipf_co/100.0, NumItems());
+      thread_local static ZipfDist d(1.0, NumItems());
+      itemIDs[i] = d()+1;
+    } else {
+      itemIDs[i] = GetItemId(r);
+      //itemIDs[i] = RandomNumber(r, 1, 100);
+    }
     if (likely(g_disable_xpartition_txn ||
                NumWarehouses() == 1 ||
                RandomNumber(r, 1, 100) > g_new_order_remote_item_pct)) {
@@ -1319,10 +1277,6 @@ for (int i=0; i<batch_size; i++) {
     }
     orderQuantities[i] = RandomNumber(r, 1, 10);
   }
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
   INVARIANT(!g_disable_xpartition_txn || allLocal);
   if (!allLocal)
     ++evt_tpcc_cross_partition_new_order_txns;
@@ -1350,7 +1304,6 @@ for (int i=0; i<batch_size; i++) {
   //   max_read_set_size : 15
   //   max_write_set_size : 15
   //   num_txn_contexts : 9
-  //timer t0;
   void *txn = db->new_txn(txn_flags, arena, txn_buf(), abstract_db::HINT_TPCC_NEW_ORDER);
   scoped_str_arena s_arena(arena);
   scoped_multilock<spinlock> mlock;
@@ -1465,23 +1418,12 @@ for (int i=0; i<batch_size; i++) {
     }
 
     measure_txn_counters(txn, "txn_new_order");
-    if (likely(db->commit_txn(txn))) {
-      //add_random_time_taken1(t0.lap());
-      #ifdef NETWORK_CLIENT
-        incr_ntxn_commits_batch();
-      #else
-        return txn_result(true, 0);
-      #endif
-    }
+    if (likely(db->commit_txn(txn)))
+      return txn_result(true, ret);
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(txn);
   }
-
-#ifdef NETWORK_CLIENT
-}  // batch loop
-  ALWAYS_ASSERT(cursor == data.size());
-#endif 
-  return txn_result(true, 0);
+  return txn_result(false, 0);
 }
 
 class new_order_scan_callback : public abstract_ordered_index::scan_callback {
@@ -1516,35 +1458,8 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, delivery_probe0_tod, delivery_probe0_cg
 tpcc_worker::txn_result
 tpcc_worker::txn_delivery()
 {
-#ifdef NETWORK_CLIENT
-  std::vector<std::vector<int>> *req = nc_get_delivery_requests(worker_id%nthreads);
-  int i=0;
-  while (req->size() < offset_delivery + 1 && i <1000) {
-    usleep(1 * 1000) ;
-    i++;
-  }
-  if (i>=1000) {
-    std::cout << "delivery waits 1 seconds\n";
-    return txn_result(true, 0); 
-  }
-  vector<int32_t> data = req->at(offset_delivery++);
-  int cursor=0;
-#endif
-
-#ifdef NETWORK_CLIENT
-for (int i=0; i<batch_size; i++) {
-  const uint warehouse_id = data[cursor++];
-  const uint o_carrier_id = data[cursor++];
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint o_carrier_id = RandomNumber(r, 1, NumDistrictsPerWarehouse());
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
   const uint32_t ts = GetCurrentTimeMillis();
 
   // worst case txn profile:
@@ -1565,7 +1480,6 @@ for (int i=0; i<batch_size; i++) {
   //   max_read_set_size : 133
   //   max_write_set_size : 133
   //   num_txn_contexts : 4
-  //timer t0;
   void *txn = db->new_txn(txn_flags, arena, txn_buf(), abstract_db::HINT_TPCC_DELIVERY);
   scoped_str_arena s_arena(arena);
   scoped_lock_guard<spinlock> slock(
@@ -1635,8 +1549,14 @@ for (int i=0; i<batch_size; i++) {
       const float ol_total = sum;
 
       // update customer
-      const customer::key k_c(warehouse_id, d, c_id);
-      ALWAYS_ASSERT(tbl_customer(warehouse_id)->get(txn, EncodeK(obj_key0, k_c), obj_v));
+      //const customer::key k_c(warehouse_id, d, c_id);
+      //ALWAYS_ASSERT(tbl_customer(warehouse_id)->get(txn, EncodeK(obj_key0, k_c), obj_v));
+
+      //customer::value v_c_temp;
+      //const customer::value *v_c = Decode(obj_v, v_c_temp);
+      //customer::value v_c_new(*v_c);
+      //v_c_new.c_balance += ol_total;
+      //tbl_customer(warehouse_id)->put(txn, EncodeK(str(), k_c), Encode(str(), v_c_new));
 
       const customer::key k_c_new(warehouse_id, d + 100, c_id);
       customer_balance::value v_c_b_temp;
@@ -1646,23 +1566,12 @@ for (int i=0; i<batch_size; i++) {
       tbl_customer(warehouse_id)->put(txn, EncodeK(str(), k_c_new), Encode(str(), v_c_b_new));
     }
     measure_txn_counters(txn, "txn_delivery");
-    if (likely(db->commit_txn(txn))) {
-      //add_random_time_taken2(t0.lap());
-      #ifdef NETWORK_CLIENT
-         incr_ntxn_commits_batch();
-      #else
-        return txn_result(true, 0);
-      #endif
-    }
+    if (likely(db->commit_txn(txn)))
+      return txn_result(true, ret);
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(txn);
   }
-
-#ifdef NETWORK_CLIENT
-}  // batch loop
-  ALWAYS_ASSERT(cursor == data.size());
-#endif 
-  return txn_result(true, 0);
+  return txn_result(false, 0);
 }
 
 static event_avg_counter evt_avg_cust_name_idx_scan_size("avg_cust_name_idx_scan_size");
@@ -1670,33 +1579,6 @@ static event_avg_counter evt_avg_cust_name_idx_scan_size("avg_cust_name_idx_scan
 tpcc_worker::txn_result
 tpcc_worker::txn_payment()
 {
-#ifdef NETWORK_CLIENT
-  std::vector<std::vector<int>> *req = nc_get_payment_requests(worker_id%nthreads);
-  int i=0;
-  while (req->size() < offset_payment + 1 && i <1000) {
-    usleep(1 * 1000) ;
-    i++;
-  }
-  if (i>=1000) {
-    std::cout << "payment waits 1 seconds\n";
-    return txn_result(true, 0); 
-  }
-  vector<int32_t> data = req->at(offset_payment++);
-  int cursor=0;
-#endif
-
-#ifdef NETWORK_CLIENT
-for (int i=0; i<batch_size; i++) {
-  const uint warehouse_id = data[cursor++];
-  const uint districtID = data[cursor++];
-  uint customerDistrictID=data[cursor++];
-  uint customerWarehouseID = data[cursor++];
-  const float paymentAmount = (float) (data[cursor++] / 100.0);
-  //ALWAYS_ASSERT(cursor == data.size());
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
   uint customerDistrictID, customerWarehouseID;
@@ -1712,10 +1594,6 @@ for (int i=0; i<batch_size; i++) {
     } while (customerWarehouseID == warehouse_id);
   }
   const float paymentAmount = (float) (RandomNumber(r, 100, 500000) / 100.0);
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
   const uint32_t ts = GetCurrentTimeMillis();
   INVARIANT(!g_disable_xpartition_txn || customerWarehouseID == warehouse_id);
 
@@ -1726,7 +1604,6 @@ for (int i=0; i<batch_size; i++) {
   //   max_read_set_size : 71
   //   max_write_set_size : 1
   //   num_txn_contexts : 5
-  //timer t0;
   void *txn = db->new_txn(txn_flags, arena, txn_buf(), abstract_db::HINT_TPCC_PAYMENT);
   scoped_str_arena s_arena(arena);
   scoped_multilock<spinlock> mlock;
@@ -1762,9 +1639,7 @@ for (int i=0; i<batch_size; i++) {
     tbl_district(warehouse_id)->put(txn, Encode(str(), k_d), Encode(str(), v_d_new));
 
     customer::key k_c;
-    customer_balance::key k_c_balance;
     customer::value v_c;
-    customer_balance::value v_c_balance;
     if (RandomNumber(r, 1, 100) <= 60) {
       // cust by name
       uint8_t lastname_buf[CustomerLastNameMaxSize + 1];
@@ -1801,16 +1676,15 @@ for (int i=0; i<batch_size; i++) {
 
       k_c.c_w_id = customerWarehouseID;
       k_c.c_d_id = customerDistrictID;
-      k_c_balance.c_d_id = customerDistrictID + 100;
       k_c.c_id = v_c_idx->c_id;
       ALWAYS_ASSERT(tbl_customer(customerWarehouseID)->get(txn, EncodeK(obj_key0, k_c), obj_v));
       Decode(obj_v, v_c);
+
     } else {
       // cust by ID
       const uint customerID = GetCustomerId(r);
       k_c.c_w_id = customerWarehouseID;
       k_c.c_d_id = customerDistrictID;
-      k_c_balance.c_d_id = customerDistrictID + 100;
       k_c.c_id = customerID;
       ALWAYS_ASSERT(tbl_customer(customerWarehouseID)->get(txn, EncodeK(obj_key0, k_c), obj_v));
       Decode(obj_v, v_c);
@@ -1818,12 +1692,7 @@ for (int i=0; i<batch_size; i++) {
     checker::SanityCheckCustomer(&k_c, &v_c);
     customer::value v_c_new(v_c);
 
-    tbl_customer(customerWarehouseID)->get(txn, EncodeK(obj_key0, k_c_balance), obj_v);
-    Decode(obj_v, v_c_balance);
-    customer_balance::value v_c_balance_new(v_c_balance);
-
     //v_c_new.c_balance -= paymentAmount;
-    v_c_balance_new.c_balance -= paymentAmount;
     v_c_new.c_ytd_payment += paymentAmount;
     v_c_new.c_payment_cnt++;
     if (strncmp(v_c.c_credit.data(), "BC", 2) == 0) {
@@ -1842,7 +1711,6 @@ for (int i=0; i<batch_size; i++) {
     }
 
     tbl_customer(customerWarehouseID)->put(txn, EncodeK(str(), k_c), Encode(str(), v_c_new));
-    tbl_customer(customerWarehouseID)->put(txn, EncodeK(str(), k_c_balance), Encode(str(), v_c_balance_new));
 
     const history::key k_h(k_c.c_d_id, k_c.c_w_id, k_c.c_id, districtID, warehouse_id, ts);
     history::value v_h;
@@ -1859,22 +1727,12 @@ for (int i=0; i<batch_size; i++) {
     ret += history_sz;
 
     measure_txn_counters(txn, "txn_payment");
-    if (likely(db->commit_txn(txn))) {
-      //add_random_time_taken3(t0.lap());
-      #ifdef NETWORK_CLIENT
-        incr_ntxn_commits_batch();
-      #else
-        return txn_result(true, 0);
-      #endif
-    }
+    if (likely(db->commit_txn(txn)))
+      return txn_result(true, ret);
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(txn);
   }
-#ifdef NETWORK_CLIENT
-}  // batch loop
- ALWAYS_ASSERT(cursor == data.size());
-#endif 
-  return txn_result(true, 0);
+  return txn_result(false, 0);
 }
 
 class order_line_nop_callback : public abstract_ordered_index::scan_callback {
@@ -1903,35 +1761,8 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, order_status_probe0_tod, order_status_p
 tpcc_worker::txn_result
 tpcc_worker::txn_order_status()
 {
-#ifdef NETWORK_CLIENT
-  std::vector<std::vector<int>> *req = nc_get_order_status_requests(worker_id%nthreads);
-  int i=0;
-  while (req->size() < offset_order_status + 1 && i <1000) {
-    usleep(1 * 1000) ;
-    i++;
-  }
-  if (i>=1000) {
-    std::cout << "order status waits 1 second\n";
-    return txn_result(true, 0); 
-  }
-  vector<int32_t> data = req->at(offset_order_status++);
-  int cursor=0; 
-#endif
-
-#ifdef NETWORK_CLIENT
-for (int i=0; i<batch_size; i++) {
-  const uint warehouse_id = data[cursor++];
-  const uint districtID = data[cursor++];
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
 
   // output from txn counters:
   //   max_absent_range_set_size : 0
@@ -1946,7 +1777,6 @@ for (int i=0; i<batch_size; i++) {
     g_disable_read_only_scans ?
       abstract_db::HINT_TPCC_ORDER_STATUS :
       abstract_db::HINT_TPCC_ORDER_STATUS_READ_ONLY;
-  //timer t0;
   void *txn = db->new_txn(txn_flags | read_only_mask, arena, txn_buf(), hint);
   scoped_str_arena s_arena(arena);
   // NB: since txn_order_status() is a RO txn, we assume that
@@ -1955,19 +1785,7 @@ for (int i=0; i<batch_size; i++) {
 
     customer::key k_c;
     customer::value v_c;
-#ifdef NETWORK_CLIENT
-    if (data[cursor++] <= 60) {
-      cursor++; // skip this item
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
-    int threshold=RandomNumber(r, 1, 100);
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-    if (threshold <= 60) {
-#endif
+    if (RandomNumber(r, 1, 100) <= 60) {
       // cust by name
       uint8_t lastname_buf[CustomerLastNameMaxSize + 1];
       static_assert(sizeof(lastname_buf) == 16, "xx");
@@ -2009,17 +1827,7 @@ for (int i=0; i<batch_size; i++) {
 
     } else {
       // cust by ID
-#ifdef NETWORK_CLIENT
-      const uint customerID = data[cursor++];
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
       const uint customerID = GetCustomerId(r);
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
       k_c.c_w_id = warehouse_id;
       k_c.c_d_id = districtID;
       k_c.c_id = customerID;
@@ -2065,22 +1873,12 @@ for (int i=0; i<batch_size; i++) {
     //ALWAYS_ASSERT(c_order_line.n >= 5 && c_order_line.n <= 15);
 
     measure_txn_counters(txn, "txn_order_status");
-    if (likely(db->commit_txn(txn))) {
-      //add_random_time_taken4(t0.lap());
-      #ifdef NETWORK_CLIENT
-         incr_ntxn_commits_batch();
-      #else
-        return txn_result(true, 0);
-      #endif
-    }
+    if (likely(db->commit_txn(txn)))
+      return txn_result(true, 0);
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(txn);
   }
-
-#ifdef NETWORK_CLIENT
-}  // batch loop
-#endif 
-  return txn_result(true, 0);
+  return txn_result(false, 0);
 }
 
 class order_line_scan_callback : public abstract_ordered_index::scan_callback {
@@ -2117,37 +1915,9 @@ static event_avg_counter evt_avg_stock_level_loop_join_lookups("stock_level_loop
 tpcc_worker::txn_result
 tpcc_worker::txn_stock_level()
 {
-#ifdef NETWORK_CLIENT
-  std::vector<std::vector<int>> *req = nc_get_stock_level_requests(worker_id%nthreads);
-  int i=0;
-  while (req->size() < offset_stock_level + 1 && i <1000) {
-    usleep(1 * 1000) ;
-    i++;
-  }
-  if (i>=1000) {
-    std::cout << "stock_level waits 1 second\n";
-    return txn_result(true, 0); 
-  }
-  vector<int32_t> data = req->at(offset_stock_level++);
-  int cursor=0;
-#endif
-
-#ifdef NETWORK_CLIENT
-for (int i=0; i<batch_size; i++) {
-  const uint warehouse_id = data[cursor++];
-  const uint threshold = data[cursor++];
-  const uint districtID = data[cursor++];
-#else
-#ifdef RANDOM_TRACKER
-//timer t;
-#endif
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint threshold = RandomNumber(r, 10, 20);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
-#ifdef RANDOM_TRACKER
-//add_random_time_taken(t.lap());
-#endif
-#endif
 
   // output from txn counters:
   //   max_absent_range_set_size : 0
@@ -2164,7 +1934,6 @@ for (int i=0; i<batch_size; i++) {
     g_disable_read_only_scans ?
       abstract_db::HINT_TPCC_STOCK_LEVEL :
       abstract_db::HINT_TPCC_STOCK_LEVEL_READ_ONLY;
-  //timer t0;
   void *txn = db->new_txn(txn_flags | read_only_mask, arena, txn_buf(), hint);
   scoped_str_arena s_arena(arena);
   // NB: since txn_stock_level() is a RO txn, we assume that
@@ -2213,22 +1982,12 @@ for (int i=0; i<batch_size; i++) {
       // NB(stephentu): s_i_ids_distinct.size() is the computed result of this txn
     }
     measure_txn_counters(txn, "txn_stock_level");
-    if (likely(db->commit_txn(txn))) {
-      //add_random_time_taken5(t0.lap());
-      #ifdef NETWORK_CLIENT
-        incr_ntxn_commits_batch();
-      #else
-        return txn_result(true, 0);
-      #endif
-    }
+    if (likely(db->commit_txn(txn)))
+      return txn_result(true, 0);
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(txn);
   }
-#ifdef NETWORK_CLIENT
-}  // batch loop
-  ALWAYS_ASSERT(cursor == data.size());
-#endif 
-  return txn_result(true, 0);
+  return txn_result(false, 0);
 }
 
 template <typename T>
@@ -2446,61 +2205,6 @@ protected:
 private:
   map<string, vector<abstract_ordered_index *>> partitions;
 };
-
-// configuration for skewed workload from the original Silo
-// results: istc11-8-28-13_cameraready.py
-/*
-  if KNOB_ENABLE_TPCC_MULTIPART_SKEW:
-  def mk_grids(nthds):
-    return [
-      {  # skewed workload
-        'name' : 'multipart:skew',
-        'dbs' : ['ndb-proto2'],
-        'threads' : [nthds],
-        'scale_factors': [4],
-        'benchmarks' : ['tpcc'],
-        'bench_opts' : [
-          '--workload-mix 100,0,0,0,0',
-        ],
-        'par_load' : [False],
-        'retry' : [True],
-        'backoff' : [True],
-        'persist' : [PERSIST_NONE],
-        'numa_memory' : ['%dG' % (4 * nthds)],
-      },
-      {
-        'name' : 'multipart:skew',
-        'dbs' : ['ndb-proto2'],
-        'threads' : [nthds],
-        'scale_factors': [4],
-        'benchmarks' : ['tpcc'],
-        'bench_opts' : [
-          '--workload-mix 100,0,0,0,0 --new-order-fast-id-gen'
-        ],
-        'par_load' : [False],
-        'retry' : [True],
-        'persist' : [PERSIST_NONE],
-        'numa_memory' : ['%dG' % (4 * nthds)],
-      },
-    ]
-  grids += [
-    {
-      'name' : 'multipart:skew',
-      'dbs' : ['kvdb-st'],
-      'threads' : [1],
-      'scale_factors': [4],
-      'benchmarks' : ['tpcc'],
-      'bench_opts' :
-        ['--workload-mix 100,0,0,0,0 --enable-separate-tree-per-partition --enable-partition-locks'],
-      'par_load' : [False],
-      'retry' : [False],
-      'persist' : [PERSIST_NONE],
-      'numa_memory' : ['%dG' % (4 * 4)],
-    },
-  ]
-  thds = [1,2,4,6,8,10,12,16,20,24,28,32]
-  grids += list(it.chain.from_iterable([mk_grids(t) for t in thds]))
-*/
 
 void
 tpcc_do_test(abstract_db *db, int argc, char **argv)

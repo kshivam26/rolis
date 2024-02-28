@@ -625,7 +625,7 @@ void replay_process(char *log, size_t len, ds &database,int nthreads,std::map<st
 
 void start_replay_processing(int file_count,int replay_thr_count,ds& database){
   std::string file_name = std::string (LOG_FOLDER_DIR) + \
-								std::string ("Log-ThreadID-") + \
+								std::string ("Log-ThreadID:") + \
 								std::to_string (file_count) +std::string(".txt" );
   std::cout << "Start processing file : " << file_name << std::endl;
   size_t sz = get_file_size(file_name);
@@ -644,7 +644,7 @@ void start_replay_processing(int file_count,int replay_thr_count,ds& database){
   ret = read (fd, buffer, sz);
   
   std::vector<long> table_names={10001,10002,10003,10004,10005,10006,10007,10008,10009,10010,10011,10012};
-  	std::string table_info_file_name = std::string(INFO_LOG_FOLDER_NAME) + "/Log-ThreadID-9999.txt";
+  	std::string table_info_file_name = std::string(INFO_LOG_FOLDER_NAME) + "/Log-ThreadID:9999.txt";
 	std::map<std::string, long> table_map = {};
 	bool pre_process_okay = fileToMap(table_info_file_name,table_map);
 	if(!pre_process_okay)
@@ -1103,7 +1103,7 @@ void start_replay_for_all_files_direct_wo_threadpool(int file_count, std::string
     for(int fid=0;fid<file_count;fid++) {
         std::string path = file_path != "" ? file_path : LOG_FOLDER_DIR;
         std::string file_name = std::string(path) + \
-                                std::string("Log-ThreadID-") + \
+                                std::string("Log-ThreadID:") + \
                                 std::to_string(fid) + std::string(".txt");
 
         if (!is_file_exist(file_name)) {
@@ -1129,8 +1129,8 @@ void start_replay_for_all_files_direct_wo_threadpool(int file_count, std::string
     }
 	
     std::string info_path = file_path != ""? file_path + "/info": INFO_LOG_FOLDER_NAME ;
-    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID-9999.txt";
-    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID-9888.txt";
+    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID:9999.txt";
+    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID:9888.txt";
     std::map<std::string, long> table_map = {};
     size_t _count=0;
     
@@ -1184,7 +1184,7 @@ void start_replay_for_all_files_direct_wo(int file_count, std::string file_path,
   for(int fid=0;fid<file_count;fid++) {
         std::string path = file_path != "" ? file_path : LOG_FOLDER_DIR;
         std::string file_name = std::string(path) + \
-                                std::string("Log-ThreadID-") + \
+                                std::string("Log-ThreadID:") + \
                                 std::to_string(fid) + std::string(".txt");
 
         if (!is_file_exist(file_name)) {
@@ -1215,8 +1215,8 @@ void start_replay_for_all_files_direct_wo(int file_count, std::string file_path,
   size_t ULL_LEN = sizeof (ULL_I);
   std::unordered_map<size_t,std::vector<WrappedLog*>> _intermediateLogs;
   std::string info_path = file_path != ""? file_path + "/info": INFO_LOG_FOLDER_NAME ;
-  std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID-9999.txt";
-  std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID-9888.txt";
+  std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID:9999.txt";
+  std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID:9888.txt";
   std::map<std::string, long> table_map = {};
   bool pre_process_okay = fileToMap(table_info_file_name,table_map);
   size_t info_trans = getTotalTransInfo(counter_info_file_name) ;
@@ -1464,7 +1464,7 @@ void start_replay_for_all_files_direct_even(int file_count, std::string file_pat
     for(int fid=0;fid<file_count;fid++) {
         std::string path = file_path != "" ? file_path : LOG_FOLDER_DIR;
         std::string file_name = std::string(path) + \
-                                std::string("Log-ThreadID-") + \
+                                std::string("Log-ThreadID:") + \
                                 std::to_string(fid) + std::string(".txt");
 
         if (!is_file_exist(file_name)) {
@@ -1505,8 +1505,8 @@ void start_replay_for_all_files_direct_even(int file_count, std::string file_pat
     }
 
     std::string info_path = file_path != ""? file_path + "/info": INFO_LOG_FOLDER_NAME ;
-    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID-9999.txt";
-    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID-9888.txt";
+    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID:9999.txt";
+    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID:9888.txt";
     std::map<std::string, long> table_map = {};
     bool pre_process_okay = fileToMap(table_info_file_name,table_map);
     size_t info_trans = getTotalTransInfo(counter_info_file_name) ;
@@ -1550,7 +1550,7 @@ void start_replay_for_all_files_direct(int file_count, std::string file_path, in
   for(int fid=0;fid<file_count;fid++) {
     std::string path = file_path != ""? file_path: LOG_FOLDER_DIR ;
 	std::string file_name = std::string (path) + \
-                                std::string ("Log-ThreadID-") + \
+                                std::string ("Log-ThreadID:") + \
                                 std::to_string (fid) + std::string (".txt");
 
     if (!is_file_exist(file_name)) {
@@ -1607,8 +1607,8 @@ void start_replay_for_all_files_direct(int file_count, std::string file_path, in
 
 //  std::vector<long> table_names={10001,10002,10003,10004,10005,10006,10007,10008,10009,10010,10011,10012};
     std::string path = file_path != ""? file_path + "/info": INFO_LOG_FOLDER_NAME ;
-  	std::string table_info_file_name = std::string(path) + "/Log-ThreadID-9999.txt";
-	std::string counter_info_file_name = std::string(path) + "/Log-ThreadID-9888.txt";
+  	std::string table_info_file_name = std::string(path) + "/Log-ThreadID:9999.txt";
+	std::string counter_info_file_name = std::string(path) + "/Log-ThreadID:9888.txt";
 	std::map<std::string, long> table_map = {};
 	bool pre_process_okay = fileToMap(table_info_file_name,table_map);
 	size_t info_trans = getTotalTransInfo(counter_info_file_name) ;
@@ -1715,7 +1715,7 @@ void start_replay_for_all_files_direct_mbta(int file_count, std::string file_pat
     for(int fid=0;fid<file_count;fid++) {
         std::string path = file_path != "" ? file_path : LOG_FOLDER_DIR;
         std::string file_name = std::string(path) + \
-                                std::string("Log-ThreadID-") + \
+                                std::string("Log-ThreadID:") + \
                                 std::to_string(fid) + std::string(".txt");
 
         if (!is_file_exist(file_name)) {
@@ -1745,8 +1745,8 @@ void start_replay_for_all_files_direct_mbta(int file_count, std::string file_pat
     size_t ULL_LEN = sizeof (ULL_I);
     std::unordered_map<size_t,std::vector<WrappedLogV2*>> _intermediateLogs;
     std::string info_path = file_path != ""? file_path + "/info": INFO_LOG_FOLDER_NAME ;
-    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID-9999.txt";
-    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID-9888.txt";
+    std::string table_info_file_name = std::string(info_path) + "/Log-ThreadID:9999.txt";
+    std::string counter_info_file_name = std::string(info_path) + "/Log-ThreadID:9888.txt";
     std::map<std::string, long> table_map = {};
     bool pre_process_okay = fileToMap(table_info_file_name,table_map);
     size_t info_trans = getTotalTransInfo(counter_info_file_name) ;
@@ -1981,7 +1981,7 @@ void start_replay_for_all_files(int file_count,int replay_thr_count,size_t max_b
     std::string path = "/home/weihshen/Desktop/silo-sto/prev_logs/" ;
     // LOG_FOLDER_DIR
 	std::string file_name = std::string (path) + \
-                                std::string ("Log-ThreadID-") + \
+                                std::string ("Log-ThreadID:") + \
                                 std::to_string (fid) + std::string (".txt");
 
 	size_t sz = get_file_size (file_name);
@@ -2026,7 +2026,7 @@ void start_replay_for_all_files(int file_count,int replay_thr_count,size_t max_b
   std::vector<long> table_names={10001,10002,10003,10004,10005,10006,10007,10008,10009,10010,10011,10012};
     std::string path2 = "/home/weihshen/Desktop/silo-sto/prev_logs/info" ;
     // INFO_LOG_FOLDER_NAME
-  std::string table_info_file_name = std::string(path2) + "/Log-ThreadID-9999.txt";
+  std::string table_info_file_name = std::string(path2) + "/Log-ThreadID:9999.txt";
 	STd::map<std::string, long> table_map = {};
 	bool pre_process_okay = fileToMap(table_info_file_name,table_map);
 	if(!pre_process_okay)
@@ -2157,7 +2157,7 @@ void replay_container(char *log, size_t len, int nthreads,std::map<std::string, 
 
 void start_replay_container_processing(int file_count,int replay_thr_count,IndependentThread* processor){
   std::string file_name = std::string (LOG_FOLDER_DIR) + \
-								std::string ("Log-ThreadID-") + \
+								std::string ("Log-ThreadID:") + \
 								std::to_string (file_count) +std::string(".txt" );
   std::cout << "Start processing file : " << file_name << std::endl;
   size_t sz = get_file_size(file_name);
@@ -2176,7 +2176,7 @@ void start_replay_container_processing(int file_count,int replay_thr_count,Indep
   ret = read (fd, buffer, sz);
   
   std::vector<long> table_names={10001,10002,10003,10004,10005,10006,10007,10008,10009,10010,10011,10012};
-  	std::string table_info_file_name = std::string(INFO_LOG_FOLDER_NAME) + "/Log-ThreadID-9999.txt";
+  	std::string table_info_file_name = std::string(INFO_LOG_FOLDER_NAME) + "/Log-ThreadID:9999.txt";
 	std::map<std::string, long> table_map = {};
 	bool pre_process_okay = fileToMap(table_info_file_name,table_map);
 	if(!pre_process_okay)

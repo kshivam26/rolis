@@ -47,9 +47,7 @@ StringAllocator::~StringAllocator() {
 #ifdef ALLOW_PAXOS_INTERCEPT
           paxos_intercept((char *)queueLog, pos, TThread::getPartitionID ());
 #else
-        #if !defined(NO_ADD_LOG_TO_NC)
           add_log_to_nc((char *)queueLog, pos, TThread::getPartitionID ());
-        #endif
 #endif
       }
 #endif
@@ -538,7 +536,7 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
 
     // to verify and double-check
     size_t _wcount_verify = 0;
-    //int flag = 0; // payment = 1, new_order = 2, delivery = 0
+    int flag = 0; // payment = 1, new_order = 2, delivery = 0
 
     for (unsigned tidx = 0; tidx != tset_size_; ++tidx) {
         table_id = 0x0;
@@ -593,8 +591,8 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
             flag = 1;
         } else if (flag == 0 && table_id >= 10122 && table_id <= 10136) {
             flag = 2;
-        }*/
-        //printf("K: %d, V: %d, has_write: %d, has_insert: %d\n", len_of_K, len_of_V, (*it).has_write(), hasInsertOp(it));
+        }
+        printf("K: %d, V: %d, has_write: %d, has_insert: %d\n", len_of_K, len_of_V, (*it).has_write(), hasInsertOp(it)); */
     }
     unsigned int len_of_KV = w - w_tmp;
     memcpy(array + w_tmp - sizeof(unsigned int), (char *) &len_of_KV, sizeof(unsigned int));
@@ -666,11 +664,13 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
             paxos_intercept((char *)queueLog, pos, TThread::getPartitionID ());
 #else
 
-          #if defined(SINGLE_PAXOS)
           // for single Paxos stream enqueuing
+          /*
           int outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
+          //std::cout << "[info] outstanding logs: " << outstanding << ", consumed logs:  " << get_outstanding_logs_cur(TThread::getPartitionID ()) << ", total logs: " << get_outstanding_logs_tol(TThread::getPartitionID ()) << std::endl;
           while (1) {
               if (outstanding >= 200||(outstanding <200 && outstanding>10)) {
+                  //usleep(1000 * 1) ; // sleep 1ms
                   outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
                   continue;
               }
@@ -679,12 +679,9 @@ inline void Transaction::serialize_util(unsigned nwriteset) const {
                   outstanding = get_outstanding_logs(TThread::getPartitionID ()) ;
                   break;
               }
-          }
-          #endif
+          }*/
 
-        #if !defined(NO_ADD_LOG_TO_NC)
           add_log_to_nc((char *)queueLog, pos, TThread::getPartitionID ());
-        #endif
 #endif
       }
 #endif

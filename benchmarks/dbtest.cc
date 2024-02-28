@@ -40,14 +40,14 @@ using namespace sync_util;
 
 int
 main(int argc, char **argv) {
-    // ./third-party/paxos/scripts/pprof --pdf ./out-perf.masstree/benchmarks/dbtest dbtest.prof > dbtest.pdf
+    /*
 #if defined DBTEST_PROFILER_ENABLED
   #ifdef USE_JEMALLOC
     ProfilerStart("dbtest.prof");
   #elif defined USE_TCMALLOC
     //HeapProfilerStart("dbtest.prof");
   #endif
-#endif
+#endif */
     vector<string> paxos_config_file{};
     string bench_type = "tpcc";
     int kSTOBatchSize = 1000;
@@ -495,8 +495,6 @@ main(int argc, char **argv) {
     static std::atomic<int> count(0);
     static std::atomic<bool> end_recv(false);
 
-
-
 #if defined(PAXOS_LIB_ENABLED)
     std::cout << "Paxos enabled" << std::endl;
     std::vector<std::string> ret = setup(argc_paxos, argv_paxos);
@@ -542,9 +540,7 @@ main(int argc, char **argv) {
 
   for (int i = 0; i < nthreads; i++) {
     register_for_follower_par_id_return([&,i](const char*& log, int len, int par_id, std::queue<std::tuple<unsigned long long int, int, int, const char *>> & un_replay_logs_) {
-      #if defined(SINGLE_PAXOS) || defined(DISABLE_REPLAY)
-      return 4;
-      #else 
+      //return 4;
       abstract_db * db = tpool_mbta.getDBWrapper(par_id)->getDB () ;
 
       // status: 1 => init, 2 => ending of paxos group, 3 => can't pass the safety check, 4 => complete replay, 5 => noops
@@ -708,13 +704,10 @@ main(int argc, char **argv) {
          //std::cout << "par_id: " << par_id << " has completed: " << un_replay_logs_.size() << std::endl;
       }
       return latest_commit_id * 10 + status ;
-      #endif
       }, i);
 
     register_for_leader_par_id_return([&,i](const char*& log, int len, int par_id, std::queue<std::tuple<unsigned long long int, int, int, const char *>> & un_replay_logs_) {
-      #if defined(SINGLE_PAXOS) || defined(DISABLE_REPLAY)
-      return 4;
-      #else 
+      //return 4;
 #ifdef PAXOS_LEADER_HERE
       auto latest_commit_id = get_latest_commit_id ((char *) log, len) ;
       latest_commit_id = latest_commit_id / 1000 ;
@@ -735,7 +728,6 @@ main(int argc, char **argv) {
       }
 #endif
     return 0;
-    #endif
     }, i);
   }
 
@@ -888,15 +880,14 @@ main(int argc, char **argv) {
   } else { // leader
       //tpool.closeAll(nthreads) ;
       tpool_mbta.closeAll(nthreads) ;
-      std::cout << "END POINT: " << timeSinceEpochMillisecCommon() << std::endl;
-   #if defined DBTEST_PROFILER_ENABLED
-     #ifdef USE_JEMALLOC
-       std::cout << "#############STOP profiler\n";
-       ProfilerStop();
-   #elif defined USE_TCMALLOC
-       //HeapProfilerStop();
-   #endif
- #endif
+//    #if defined DBTEST_PROFILER_ENABLED
+//      #ifdef USE_JEMALLOC
+//        std::cout << "#############STOP profiler\n";
+//        ProfilerStop();
+//    #elif defined USE_TCMALLOC
+//        //HeapProfilerStop();
+//    #endif
+//  #endif
   }
   sync_util::sync_logger::shutdown() ;
 #endif
@@ -929,13 +920,13 @@ main(int argc, char **argv) {
             }
         }
         if (latencyVector.size() > 0) {
-            //std::cout << "averaged latency: " << latency_ts / 1000.0 / valid_cnt << std::endl;
+            std::cout << "averaged latency: " << latency_ts / 1000.0 / valid_cnt << std::endl;
             std::sort (latencyVector.begin(), latencyVector.end());
-            //std::cout << "10% latency: " << latencyVector[(int)(valid_cnt *0.1)] / 1000.0 << std::endl;
+            std::cout << "10% latency: " << latencyVector[(int)(valid_cnt *0.1)] / 1000.0 << std::endl;
             std::cout << "50% latency: " << latencyVector[(int)(valid_cnt *0.5)] / 1000.0 << std::endl;
             std::cout << "90% latency: " << latencyVector[(int)(valid_cnt *0.9)] / 1000.0 << std::endl;
             std::cout << "95% latency: " << latencyVector[(int)(valid_cnt *0.95)] / 1000.0 << std::endl;
-            //std::cout << "99% latency: " << latencyVector[(int)(valid_cnt *0.99)] / 1000.0 << std::endl;
+            std::cout << "99% latency: " << latencyVector[(int)(valid_cnt *0.99)] / 1000.0 << std::endl;
         }
     }
 #endif

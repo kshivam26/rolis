@@ -81,7 +81,7 @@
 #define MAX_THREADS_T 256
 
 // weihshen, 4098*4098*3 should be enough, rather than 4098*4098*1024
-#define MAX_ARRAY_SIZE_IN_BYTES  size_t(4096)*size_t(3)*size_t(4096)*sizeof(char)
+#define MAX_ARRAY_SIZE_IN_BYTES  size_t(4098)*size_t(3)*size_t(4098)*sizeof(char)
 
 struct PUnit{
   unsigned long long int cid;
@@ -226,7 +226,7 @@ class StringAllocator{
   
   StringAllocator(){
     LOG = (unsigned char *) malloc (MAX_ARRAY_SIZE_IN_BYTES);
-    //memset(LOG,'\0',MAX_ARRAY_SIZE_IN_BYTES);
+    memset(LOG,'\0',MAX_ARRAY_SIZE_IN_BYTES);
     curr_pos = 0;
     entries = 0;
     latest_commit_id = 0;

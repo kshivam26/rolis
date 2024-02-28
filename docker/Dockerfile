@@ -24,9 +24,9 @@ COPY gitconfig /root/.gitconfig
 # deploy Rolis environment
 WORKDIR "/root"
 # using branch "master" for the Rolis
-RUN git clone https://github.com/stonysystems/rolis.git
+RUN git clone https://github.com/shenweihai1/rolis-eurosys2022.git
 
 RUN apt-get install -y wget
-WORKDIR "/root/rolis"
+WORKDIR "/root/rolis-eurosys2022"
 # install dependencies
 RUN bash install.sh

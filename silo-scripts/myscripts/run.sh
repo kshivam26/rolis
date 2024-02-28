@@ -1,1 +1,1 @@
-g++ cputime.cpp -g -lpthread -lrt -Wall -O0 -o run
+g++ shared_ptr.cpp -g -lpthread -Wall -O0 -o run

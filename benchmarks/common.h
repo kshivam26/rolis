@@ -19,10 +19,6 @@
 #include "rpc/client.h"
 #include "sto/OutputDataSerializer.h"
 
-uint64_t timeSinceEpochMillisecCommon() {
-    using namespace std::chrono;
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-}
 
 using namespace std;
 // 0: scan, 1: redo, 2: ending; length; data

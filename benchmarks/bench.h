@@ -123,8 +123,7 @@ public:
       ntxn_commits(0), ntxn_aborts(0),
       latency_numer_us(0),
       backoff_shifts(0), // spin between [0, 2^backoff_shifts) times before retry
-      size_delta(0),
-      ntxn_commits_batch(0), random_time_taken(0),random_time_taken1(0),random_time_taken2(0),random_time_taken3(0),random_time_taken4(0),random_time_taken5(0)
+      size_delta(0)
   {
     txn_obj_buf.reserve(str_arena::MinStrReserveLength);
     txn_obj_buf.resize(db->sizeof_txn_object(txn_flags));
@@ -155,27 +154,6 @@ public:
 
   inline size_t get_ntxn_commits() const { return ntxn_commits; }
   inline size_t get_ntxn_aborts() const { return ntxn_aborts; }
-
-  inline size_t get_ntxn_commits_batch() const { return ntxn_commits_batch; }
-  inline void incr_ntxn_commits_batch() { ntxn_commits_batch++; }
-
-  inline size_t get_random_time_taken() const { return random_time_taken; }
-  inline void add_random_time_taken(size_t counter) { random_time_taken += counter; }
-
-  inline size_t get_random_time_taken1() const { return random_time_taken1; }
-  inline void add_random_time_taken1(size_t counter) { random_time_taken1 += counter; }
-
-  inline size_t get_random_time_taken2() const { return random_time_taken2; }
-  inline void add_random_time_taken2(size_t counter) { random_time_taken2 += counter; }
-
-  inline size_t get_random_time_taken3() const { return random_time_taken3; }
-  inline void add_random_time_taken3(size_t counter) { random_time_taken3 += counter; }
-
-  inline size_t get_random_time_taken4() const { return random_time_taken4; }
-  inline void add_random_time_taken4(size_t counter) { random_time_taken4 += counter; }
-
-  inline size_t get_random_time_taken5() const { return random_time_taken5; }
-  inline void add_random_time_taken5(size_t counter) { random_time_taken5 += counter; }
 
   inline uint64_t get_latency_numer_us() const { return latency_numer_us; }
 
@@ -219,13 +197,6 @@ private:
   size_t ntxn_aborts;
   uint64_t latency_numer_us;
   unsigned backoff_shifts;
-  size_t ntxn_commits_batch;  // the real commits in batch
-  size_t random_time_taken; // microsecond
-  size_t random_time_taken1; // microsecond
-  size_t random_time_taken2; // microsecond
-  size_t random_time_taken3; // microsecond
-  size_t random_time_taken4; // microsecond
-  size_t random_time_taken5; // microsecond
 
 protected:
 

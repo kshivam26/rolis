@@ -1,5 +1,5 @@
 #!/bin/bash
-repos="rolis"  # repos name, default
+repos="rolis-eurosys2022"  # repos name, default
 workdir="~"  # we default put our repos under the root
 leadrIP=$( cat ./scripts/ip_leader_replica )
 p1=$( cat ./scripts/ip_p1_follower_replica )
