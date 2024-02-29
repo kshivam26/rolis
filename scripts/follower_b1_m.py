@@ -33,13 +33,11 @@ killCommand = "sudo pkill -f dbtest"
 
 if __name__ == "__main__":
     follower = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    follower.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
     follower.connect((server_ip, port))
 
     follower.recv(1024) # received msg1
 
     follower2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    follower2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
     follower2.connect((server_ip2, port))
 
     follower2.recv(1024) # received msg2

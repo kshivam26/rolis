@@ -9,7 +9,8 @@ import os
 
 log_commands, log_results = None, None
 
-prefix = "/dev/shm/GLOGS/OPTIMAL"
+bytes27 = False
+prefix = "/dev/shm/GLOGS" if bytes27 else "/dev/shm/GLOGS/OPTIMAL"
 
 """
 # automatic scripts
@@ -59,12 +60,12 @@ settings = {
 
 COMMANDS = {
     # compiler: without Paxos involved
-    "init-compiler": "make clean && make -j dbtest MODE=perf SERIALIZE=1 PAXOS_ENABLE_CONFIG=0 STO_BATCH_CONFIG=0 SILO_SERIAL_CONFIG=0 PAXOS_ZERO_CONFIG=0 LOGGING_TO_ONLY_FILE=1 OPTIMIZED_REPLAY=1 REPLAY_FOLLOWER=0 DBTEST_PROFILER=0 && make ht_mt2",
+    "init-compiler": "make clean && make -j dbtest MODE=perf SERIALIZE=1 PAXOS_ENABLE_CONFIG=0 STO_BATCH_CONFIG=0 SILO_SERIAL_CONFIG=0 PAXOS_ZERO_CONFIG=0 LOGGING_TO_ONLY_FILE=1 OPTIMIZED_REPLAY={o} REPLAY_FOLLOWER=0 DBTEST_PROFILER=0 && make ht_mt2".format(o="0" if bytes27 else "1"),
     # generate logs
     "generate": """./out-perf.masstree/benchmarks/dbtest --verbose --bench tpcc --db-type mbta --bench-opts="--cpu-gap 1 --num-cpus 32" --scale-factor {thread_num} --num-threads {thread_num} --numa-memory 4G --parallel-loading --runtime {duration} -F third-party/paxos/config/1c1s1p.yml -F third-party/paxos/config/occ_paxos.yml -S 1000 > {output}/{thread_num}-{trial}.G.log 2>&1 """,
     # replay logs
     "replay": """./out-perf.masstree/benchmarks/ht_mt2 --file-count {file_count} --file-path={prefix}/GenLogThd{thread_num}.Time.{duration}/ --num-threads {thread_num} --optimized 1 > {output}/{thread_num}-{trial}.R.log 2>&1""",
-    "info": """cat {base_path}/info/Log-ThreadID-9888.txt {base_path}/info/Log-ThreadID-9999.txt && ls -lh {base_path}/ > {output}/{thread_num}-{trial}.info.log 2>&1"""
+    "info": """cat {base_path}/info/Log-ThreadID:9888.txt {base_path}/info/Log-ThreadID:9999.txt && ls -lh {base_path}/ > {output}/{thread_num}-{trial}.info.log 2>&1"""
 }
 
 
@@ -125,8 +126,8 @@ def runner(start, end, it=3, skipG=False, skipR=False, output="results-replay", 
                     time.sleep(1)
 
             # check info 9888.txt to take out table information and # of transaction
-            trans_cnt, table_ids, total, file_count = getInfo9888(basePath + "/info/Log-ThreadID-9888.txt")
-            ttotal = getInfo9888_V2(basePath + "/info/Log-ThreadID-9888.txt")
+            trans_cnt, table_ids, total, file_count = getInfo9888(basePath + "/info/Log-ThreadID:9888.txt")
+            ttotal = getInfo9888_V2(basePath + "/info/Log-ThreadID:9888.txt")
             print("count file:", file_count)
             if run == "RUN" and not trans_cnt:
                 print("[ERROR] info does not exist")

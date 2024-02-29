@@ -2,22 +2,20 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter
-matplotlib.rcParams['text.usetex'] = True
-plt.rcParams['text.usetex'] = True
-# the figure with zero-based
+
 def millions(x, pos):
-    return '%1.1fM' % (x * 1e-6)
+    return '%1.2fM' % (x * 1e-6)
 formatter = FuncFormatter(millions)
 
 # Batch-size	Throughput	10 %	50 %	90 %	95 %	99 %
 txt = """
-50	497411	0	14.896	25.122	26.056	0
-100	562908	0	15.325	23.863	28.703	0
-200	594331	0	17.439	26.794	31.835	0
-400	617211	0	23.231	33.457	38.758	0
-800	627155	0	35.637	48.544	55.539	0
-1600	630986	0	64.903	90.554	109.251	0
-3200	617875	0	128.171	187.753	228.898	0
+50	598909	8.851	13.821	21.412	25.253	16794.128
+100	682210	9.66	15.072	22.755	26.225	7899.65
+200	738032	11.92	17.779	26.426	30.604	4281.485
+400	756157	15.15	20.928	30.582	35.227	4265.174
+800	774235	774235	31.984	45.131	54.215	4178.463
+1600	784871	43.744	53.385	73.204	86.353	3516.359
+3200	761983	87.523	108.2	162.482	196.823	3543.009
 """
 
 keys, values1, values2, values3, values4, values5, values6 = [], [], [], [], [], [], []
@@ -35,11 +33,11 @@ for l in txt.split("\n"):
     values5.append(float(items[5]))
     values6.append(float(items[6]))
 
-plt.rcParams["font.size"] = 40
+plt.rcParams["font.size"] = 30
 matplotlib.rcParams['lines.markersize'] = 14
 fig, ax = plt.subplots(figsize=(14, 9))
-plt.rcParams["font.family"] = "Times"
-matplotlib.rcParams["font.family"] = "Times"
+plt.rcParams["font.family"] = "serif"
+matplotlib.rcParams["font.family"] = "serif"
 
 ax.set_xticklabels(["50", "100", "200", "400", "800", "1600", "3200"])
 ax.yaxis.set_major_formatter(formatter)
@@ -47,11 +45,11 @@ ax.set_xticks(keys)
 # ax.set(xlabel='Batch size',
 #         ylabel='Throughput (txns/sec)',
 #         title=None)
-ax.set_xlabel("Batch size", fontname="Times")
-ax.set_ylabel("Throughput (txns/sec)", fontname="Times")
-ax.plot(keys, values1, marker="+", label='TPUT  ', linestyle='--', linewidth=3)
-ax.legend(bbox_to_anchor=(0, 0.92, 0.27, 0.2), handlelength=1, mode="expand", ncol=1, loc="upper left", borderaxespad=0, frameon=False)
-ax.set_ylim([0 * 1000, 700 * 1000])
+ax.set_xlabel("Batch size", fontname="serif")
+ax.set_ylabel("Throughput (txns/sec)", fontname="serif")
+ax.plot(keys, values1, marker="+", label='TPUT', linestyle='--', linewidth=3)
+ax.legend(bbox_to_anchor=(0, 0.92, 0.25, 0.2), mode="expand", ncol=1, loc="upper left", borderaxespad=0, frameon=False)
+ax.set_ylim([600 * 1000, 800 * 1000])
 
 ax2=ax.twinx()
 ax2.set_xticks(keys)
@@ -62,22 +60,18 @@ ax2.yaxis.grid()
 # ax2.set(xlabel=None,
 #         ylabel='Latency (ms)',
 #         title=None)
-ax2.set_ylabel("Latency (ms)", fontname="Times")
+ax2.set_ylabel("Latency (ms)", fontname="serif")
 ax2.set_xticklabels(["50", "100", "200", "400", "800", "1600", "3200"])
-ax2.legend(bbox_to_anchor=(0.27, 0.92, 0.73, 0.2), handlelength=1, mode="expand", ncol=3, loc="upper left", borderaxespad=0, frameon=False, fancybox=False)
-ax2.set_ylim([0, 240])
+ax2.legend(bbox_to_anchor=(0.25, 0.92, 0.75, 0.2), mode="expand", ncol=3, loc="upper left", borderaxespad=0, frameon=False, fancybox=False)
+ax2.set_ylim([0, 200])
 for tick in ax.get_xticklabels():
-    tick.set_fontname("Times")
+    tick.set_fontname("serif")
 for tick in ax.get_yticklabels():
-    tick.set_fontname("Times")
+    tick.set_fontname("serif")
 for tick in ax2.get_xticklabels():
-        tick.set_fontname("Times")
+        tick.set_fontname("serif")
 for tick in ax2.get_yticklabels():
-    tick.set_fontname("Times")
-ax.xaxis.labelpad = 20
-ax.yaxis.labelpad = 20
-
+    tick.set_fontname("serif")
 fig.tight_layout()
-plt.subplots_adjust(bottom=0.18)
 fig.savefig("latency-2.eps", format='eps', dpi=1000)
 plt.show()

@@ -15,15 +15,8 @@
 #include "config.h"
 #include "s_main.h"
 #include "paxos/server.h"
-#include "network_client/network_impl.h"
 
 using namespace janus;
-using namespace network_client;
-
-// network client
-std::vector<shared_ptr<network_client::NetworkClientServiceImpl>> nc_services = {};
-std::vector<shared_ptr<pthread_t>> nc_service_pthreads = {};
-// end of network client
 
 vector<unique_ptr<ClientWorker>> client_workers_g = {};
 //vector<shared_ptr<PaxosWorker>> pxs_workers_g = {};
@@ -463,8 +456,8 @@ void add_log_to_nc(const char* log, int len, uint32_t par_id){
 }
 
 void* PollSubQNc(void* arg){
-   while(true){
-     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+   while(false && true){
+     std::this_thread::sleep_for(std::chrono::seconds(100));
      l_.lock();
      //Log_info("Clearing queue of size %d", submit_queue_nc.size());
      int deleted = 0;
@@ -898,105 +891,3 @@ void microbench_paxos_queue() {
     }
     pre_shutdown_step();
 }
-
-// http://www.cse.cuhk.edu.hk/~ericlo/teaching/os/lab/9-PThread/Pass.html
-struct args {
-    int port;
-    char* server_ip;
-    int par_id;
-};
-
-static void
-nc_pclock(char *msg, clockid_t cid)
-{
-    struct timespec ts;
-
-    printf("%s", msg);
-    if (clock_gettime(cid, &ts) == -1)
-        std::cout << "clock_gettime error" << std::endl;
-    printf("%4jd.%03ld\n", (intmax_t)ts.tv_sec, ts.tv_nsec / 1000000);
-}
-
-void *nc_start_server(void *input) {
-    NetworkClientServiceImpl *impl = new NetworkClientServiceImpl();
-    rrr::PollMgr *pm = new rrr::PollMgr();
-    base::ThreadPool *tp = new base::ThreadPool();  // never use it
-    rrr::Server *server = new rrr::Server(pm, tp);
-    
-    // We should count the child threads into consideration
-    bool track_cputime=true;
-    pthread_t *ps;
-    if (track_cputime) ps = pm->GetPthreads(0);
-
-    server->reg(impl);
-    server->start((std::string(((struct args*)input)->server_ip)+std::string(":")+std::to_string(((struct args*)input)->port)).c_str()  );
-    nc_services.push_back(std::shared_ptr<NetworkClientServiceImpl>(impl));
-    int c=0;
-    while (1) {
-      c++;
-      sleep(1);
-      if (c==40) break;
-
-      if (track_cputime) {
-        clockid_t cid;
-        int s = pthread_getcpuclockid(*ps, &cid);
-        if (s != 0)
-            std::cout << "error\n";
-        nc_pclock("sub threads thread CPU time:   ", cid);
-      }
-      
-      /*
-      std::cout << "received on par_id: " << std::to_string(((struct args*)input)->par_id) << "\n";
-      std::cout << "  new_order_counter:" << impl->counter_new_order << "\n"
-                << "  counter_payement:" << impl->counter_payement << "\n"
-                << "  counter_delivery:" << impl->counter_delivery << "\n"
-                << "  counter_order_status:" << impl->counter_order_status << "\n"
-                << "  counter_stock_level:" << impl->counter_stock_level << "\n"
-                << "  in total:" << (impl->counter_new_order+impl->counter_payement+impl->counter_delivery+impl->counter_order_status+impl->counter_stock_level) << "\n\n" ;
-                */
-    }
-}
-
-// setup nthreads servers
-void nc_setup_server(int nthreads, std::string host) {
-  // std::map<std::string, std::string> hosts = getHosts(filename) ;
-  // (char*)hosts["localhost"]
-  for (int i=0; i<nthreads; i++) {
-    struct args *ps = (struct args *)malloc(sizeof(struct args));
-    ps->port=10010+i;
-    ps->server_ip=(char*)host.c_str();
-    ps->par_id=i;
-    pthread_t ph_s;
-    pthread_create(&ph_s, NULL, nc_start_server, (void *)ps);
-    pthread_detach(ph_s);
-    usleep(10 * 1000); // wait for 10ms
-  }
-}
-
-std::vector<std::vector<int>> *nc_get_new_order_requests(int par_id) {
-  return &nc_services[par_id]->new_order_requests;
-}
-
-std::vector<std::vector<int>>* nc_get_payment_requests(int par_id) {
-  return &nc_services[par_id]->payment_requests;
-}; 
-
-std::vector<std::vector<int>>* nc_get_delivery_requests(int par_id) {
-  return &nc_services[par_id]->delivery_requests;
-}; 
-
-std::vector<std::vector<int>>* nc_get_order_status_requests(int par_id) {
-  return &nc_services[par_id]->order_status_requests;
-}; 
-
-std::vector<std::vector<int>>* nc_get_stock_level_requests(int par_id) {
-  return &nc_services[par_id]->stock_level_requests;
-}; 
-
-std::vector<std::vector<int>>* nc_get_read_requests(int par_id) {
-  return &nc_services[par_id]->read_requests;
-}; 
-
-std::vector<std::vector<int>>* nc_get_rmw_requests(int par_id) {
-  return &nc_services[par_id]->rmw_requests;
-}; 

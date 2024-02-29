@@ -33,13 +33,3 @@ int get_epoch();
 
 // auxiliary functions
 void worker_info_stats(size_t);
-
-// network client
-void nc_setup_server(int, std::string);  // start a server accepting requests on the leader replica
-std::vector<std::vector<int>>* nc_get_new_order_requests(int); 
-std::vector<std::vector<int>>* nc_get_payment_requests(int); 
-std::vector<std::vector<int>>* nc_get_delivery_requests(int); 
-std::vector<std::vector<int>>* nc_get_order_status_requests(int); 
-std::vector<std::vector<int>>* nc_get_stock_level_requests(int); 
-std::vector<std::vector<int>>* nc_get_read_requests(int); 
-std::vector<std::vector<int>>* nc_get_rmw_requests(int); 

@@ -23,9 +23,7 @@ killCommand = "sudo pkill -f dbtest"
 
 if __name__ == "__main__":
     server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
     server.bind((server_ip,port))
-    # Here, we set the maximum size for the backlog queue to 5
     server.listen(5)
     connection, address = server.accept()
     

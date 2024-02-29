@@ -933,12 +933,10 @@ public:
     
     TThread::set_id(__sync_fetch_and_add(&tidcounter, 1));
     if(!loader){
-      // one Silo thread has a corresponding paxos group, it could be configurable in the future
+      // XXX, one Silo thread has a corresponding paxos group, it could be configurable in the future
       size_t old = __sync_fetch_and_add(&partition_id, 1);
-      #if defined(SINGLE_PAXOS)
       // single paxos stream
-      old = 0;
-      #endif
+      //old = 0;
       TThread::set_pid (old);
 
       std::cout << "ParID now : " << old << std::endl;

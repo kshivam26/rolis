@@ -428,7 +428,7 @@ bench_runner::run_without_stats()
   const vector<bench_loader *> loaders = make_loaders();
   if (f_mode == 0) { // weihai, f_mode==0 is normal to load data
       {
-          std::cout << "Load phase, load_size: " << loaders.size() << std::endl;
+          std::cout << "Load phase..." << std::endl;
           spin_barrier b(loaders.size());
           const pair<uint64_t, uint64_t> mem_info_before = get_system_memory_info();
           {
@@ -488,16 +488,13 @@ bench_runner::run_without_stats()
 //      cerr << "table " << it->first << " size " << s << endl;
 //      table_sizes_before[it->first] = s;
 //    }
-    cerr << "starting benchmark...." << endl;
+    cerr << "starting benchmark..." << endl;
   }
 
   if (f_mode == 0) {  // ONLY normal case need this
       sleep(nthreads);
-#if defined(NETWORK_CLIENT) || defined(NETWORK_CLIENT_YCSB)
-    //nc_setup_server(nthreads, "10.1.0.7");
-    nc_setup_server(nthreads, "127.0.0.1");
-#endif
   }
+
 
   len_payment = 0;
   len_new_order = 0;
@@ -542,7 +539,6 @@ bench_runner::run_without_stats()
               bool fail = true;
           #else
               bool fail = false;
-          std::cout << "START POINT: " << timeSinceEpochMillisecBench() << ", fail: " << fail << std::endl;
           #endif
           for(uint64_t i=0; i<runtime*10; i++) {
               usleep(100000);
@@ -564,13 +560,8 @@ bench_runner::run_without_stats()
       }
       printf("[agg_throughput-150-30] [%lu-%lu]throughput without warmup and cool-down: %f\n", n_commits_25, n_commits_5, (float)(n_commits_25 - n_commits_5) / 120);
       __sync_synchronize();
-      std::cout << "finish __sync_synchronize\n";
-      for (size_t i = 0; i < nthreads; i++) {
-          std::cout << "wait for worker: " << i << std::endl;
+      for (size_t i = 0; i < nthreads; i++)
           workers[i]->join();
-          std::cout << "complete for worker: " << i << std::endl;
-      }
-          
       const unsigned long elapsed_nosync = _t_nosync.lap();
       db->do_txn_finish(); // waits for all worker txns to persist
       //  usleep(100000);
@@ -702,24 +693,10 @@ bench_runner::print_stats()
   // loaders
   
   size_t n_commits = 0;
-  size_t n_commits_batch = 0;
-  size_t n_random_time_taken = 0;
-  size_t n_random_time_taken1 = 0;
-  size_t n_random_time_taken2 = 0;
-  size_t n_random_time_taken3 = 0;
-  size_t n_random_time_taken4 = 0;
-  size_t n_random_time_taken5 = 0;
   size_t n_aborts = 0;
   uint64_t latency_numer_us = 0;
   for (size_t i = 0; i < nthreads; i++) {
     n_commits += workers[i]->get_ntxn_commits();
-    n_commits_batch += workers[i]->get_ntxn_commits_batch();
-    n_random_time_taken += workers[i]->get_random_time_taken();
-    n_random_time_taken1 += workers[i]->get_random_time_taken1();
-    n_random_time_taken2 += workers[i]->get_random_time_taken2();
-    n_random_time_taken3 += workers[i]->get_random_time_taken3();
-    n_random_time_taken4 += workers[i]->get_random_time_taken4();
-    n_random_time_taken5 += workers[i]->get_random_time_taken5();
     n_aborts += workers[i]->get_ntxn_aborts();
     latency_numer_us += workers[i]->get_latency_numer_us();
     //std::cout << "thread_id " << i << " latency is " <<  workers[i]->get_latency_numer_us() / 1000.0 << " ms n_commits is \t " << workers[i]->get_ntxn_commits() << std::endl;
@@ -807,13 +784,7 @@ bench_runner::print_stats()
     cerr << "agg_nosync_throughput: " << agg_nosync_throughput << " ops/sec" << endl;
     cerr << "avg_nosync_per_core_throughput: " << avg_nosync_per_core_throughput << " ops/sec/core" << endl;
     cerr << "agg_throughput: " << agg_throughput << " ops/sec" << endl;
-    cerr << "random time Taken: " << n_random_time_taken/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "random time Taken1: " << n_random_time_taken1/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "random time Taken2: " << n_random_time_taken2/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "random time Taken3: " << n_random_time_taken3/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "random time Taken4: " << n_random_time_taken4/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "random time Taken5: " << n_random_time_taken5/(nthreads+0.0)/1000000.0 << " seconds" << endl;
-    cerr << "n_commits: " << n_commits << ", n_commits_batch: " << n_commits_batch << " , elapsed: " << elapsed_sec << endl;
+    cerr << "n_commits: " << n_commits << " , elapsed: " << elapsed_sec << endl;
     cerr << "avg_per_core_throughput: " << avg_per_core_throughput << " ops/sec/core" << endl;
     cerr << "agg_persist_throughput: " << agg_persist_throughput << " ops/sec" << endl;
     cerr << "avg_per_core_persist_throughput: " << avg_per_core_persist_throughput << " ops/sec/core" << endl;

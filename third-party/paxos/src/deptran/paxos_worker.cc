@@ -605,11 +605,12 @@ void PaxosWorker::AddReplayEntry(Marshallable& entry){
 void* PaxosWorker::StartReplayRead(void* arg){
   PaxosWorker* pw = (PaxosWorker*)arg;
   while(!pw->stop_replay_flag){
+    sleep(1); // this is NOT used again, we sleep here for a cpu saving
     Marshallable* p;
     auto res = pw->replay_queue.try_dequeue(p);
     if(!res)continue;
-    Log_info("**** inside StartReplayRead, calling next");
-    pw->Next(*p);
+    exit(1);
+    //pw->Next(*p);
   }
 }
 

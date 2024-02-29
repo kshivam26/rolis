@@ -1,4 +1,4 @@
-repos="rolis"  # repos name, default
+repos="rolis-eurosys2022"  # repos name, default
 workdir="~"  # we default put our repos under the root
 leadrIP=$( cat ./scripts/ip_leader_replica )
 p1=$( cat ./scripts/ip_p1_follower_replica )
@@ -6,11 +6,13 @@ p2=$( cat ./scripts/ip_p2_follower_replica )
 clients=(
       $p1 # p1 follower replica IP
       $p2 # p2 follower replica IP
-      #"10.1.0.74" # it is only required for networked clients
 )
 
+#repos="silo-sto"
+#workdir="~/weihai-projects"
+
 cmd1=""
-cmd2="sudo skill dbtest;sudo pkill dbtest; sudo pkill nc_main; sleep 1"
+cmd2="sudo skill dbtest;sudo pkill dbtest; sleep 1"
 cmd3="sudo rm -rf $workdir/$repos/xxxx15/*; sudo rm -rf $workdir/$repos/xxxx15_micro/*" # sudo rm -rf ~/meerkat/logs/* && sudo rm -rf /tmp/* && sudo rm -rf ~/boost_1_70_0 ~/boost_1_70_0.tar.bz2 ~/dpdk-19.11.5.tar.gz ~/dpdk-stable-19.11.5 ~/eRPC"
 cmd4=""
 cmd5=""
@@ -38,7 +40,7 @@ fi
 
 
 cmd1="cd $workdir ; sudo rm -rf $repos; scp -r $username@$leadrIP:$workdir/$repos ."
-cmd2="sudo skill dbtest;sudo pkill dbtest; sudo pkill nc_main; sleep 1"
+cmd2="sudo skill dbtest;sudo pkill dbtest; sleep 1"
 cmd3="sudo rm -rf $workdir/$repos/xxxx15/*; sudo rm -rf $workdir/$repos/xxxx15_micro/*"
 cmd4=""
 cmd5=""

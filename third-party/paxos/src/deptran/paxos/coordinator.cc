@@ -247,34 +247,25 @@ namespace janus
     }
   }
 
-  void BulkCoordinatorMultiPaxos::GotoNextPhase()
-  {
-    while (true)
-    {
-      int n_phase = 4;
-      int current_phase = phase_ % n_phase;
-      phase_++;
-      if (current_phase == Phase::INIT_END)
-      {
-        if (phase_ > 3)
-        {
-          break;
-        }
-        Prepare();
-        if (!in_submission_)
-        {
-          break;
-        }
-        phase_++; // need to do this because Phase::Dispatch = 1
+void BulkCoordinatorMultiPaxos::GotoNextPhase() {
+  while(true){
+    int n_phase = 4;
+    int current_phase = phase_ % n_phase;
+    phase_++;
+    if(current_phase == Phase::INIT_END){
+      if(phase_ > 3){
+        break;
       }
-      else if (current_phase == Phase::ACCEPT)
-      {
-        // Log_debug("In accept mode");
-        Accept();
-        if (!in_submission_)
-        {
-          break;
-        }
+      //Prepare(); // fix leader, We should prepare once instead for every request
+      if(!in_submission_){
+        break;
+      }
+      phase_++;// need to do this because Phase::Dispatch = 1
+    } else if(current_phase == Phase::ACCEPT){
+      //Log_info("In accept mode");
+      Accept();
+      if(!in_submission_){
+        break;
       }
       else if (current_phase == Phase::COMMIT)
       {
@@ -500,32 +491,19 @@ namespace janus
       if(!valid){
         ess_cc->step_down(ballot);
         this->in_submission_ = false;
-      } });
-
-    // auto sp_quorum = commo()->CrpcBroadcastBulkDecide(par_id_, commit_cmd_marshallable, [this, ess_cc](ballot_t ballot, int valid){
-    //   if(!this->in_commit){
-    //     return;
-    //   }
-    //   if(!valid){
-    //     ess_cc->step_down(ballot);
-    //     this->in_submission_ = false;
-    //   }
-    // }, frame_->site_info_->id);
-
-    sp_quorum->Wait();
-    if (sp_quorum->Yes())
-    {
-      // Log_debug("Commit: some stuff is committed");
-    }
-    else if (sp_quorum->No())
-    {
-      in_submission_ = false;
-      return;
-    }
-    else
-    {
-      verify(0);
-    }
+      }
+    });
+  // commit is async; 
+  // logic is: prepare (once) -> Accept -> Commit (async)
+  //   sp_quorum->Wait();
+  //   if (sp_quorum->Yes()) {
+	// //Log_info("Commit: some stuff is committed");
+  //   } else if (sp_quorum->No()) {
+  //     in_submission_ = false;
+  //     return;
+  //   } else {
+  //     verify(0);
+  //   }
     in_commit = false;
     // verify(phase_ == Phase::COMMIT);
     commit_callback_();

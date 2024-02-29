@@ -39,4 +39,4 @@ rm -rf rpclib
 
 cd ~
 wget https://raw.githubusercontent.com/thorsteinssonh/bash_test_tools/master/bash_test_tools
-sudo cp bash_test_tools ~/.bash_test_tools
+cp bash_test_tools ~/.bash_test_tools

@@ -170,11 +170,5 @@ ag 'agg_throughput: ' xxxx15
 ```
 ![alt](./documents/exp8-results.png)
 
-### Experiment-9: Single Paxos stream (Figure-2)
-In this experiment, we only use single Paxos stream to replicate logs with replay disabled to maximize the throughput. Similar to Experiment-2, except replacing the script names as follow,
-```
-multi.sh  => multi_single_paxos.sh
-```
-
 ## References
 * Eurosys badges: https://sysartifacts.github.io/eurosys2022/badges
