@@ -289,7 +289,6 @@ namespace janus
 
   void BulkCoordinatorMultiPaxos::Prepare()
   {
-    // Log_info("++++ cp1; the size of vec_md: %d with gettid: %d", this->vec_md.size(), gettid());
     // std::lock_guard<std::recursive_mutex> lock(mtx_);
     in_prepare_ = true;
     // curr_ballot_ = PickBallot();
@@ -397,7 +396,8 @@ namespace janus
     // auto val = Config::GetConfig()->getRoutingOption();
     // Log_info("#### The value of isCrpcEnabled:%d", val);
     // if (false) {
-       if (!Config::GetConfig()->getRoutingOption()){
+    auto request_start_time = std::chrono::high_resolution_clock::now ();
+    if (!Config::GetConfig()->getRoutingOption()){
       // Log_debug("is_crpc_enabled is false; calling BroadcastBulkAccept");
       sp_quorum = commo()->BroadcastBulkAccept(par_id_, cmd_, [this, ess_cc](ballot_t ballot, int valid)
                                                {
@@ -442,9 +442,13 @@ namespace janus
     //     this->in_submission_ = false;
     //   }
     // }, frame_->site_info_->id);
-
+    // auto request_mid_time = std::chrono::high_resolution_clock::now ();
+    // Log_info("**** starting wait for par_id: %d, and event: %ld with latency: %d microseconds", par_id_, sp_quorum.get(), chrono::duration_cast<chrono::microseconds>(request_mid_time - request_start_time).count());
     sp_quorum->Wait();
-    Log_debug("****wait over for pard_id: %d", par_id_);
+    auto request_end_time = std::chrono::high_resolution_clock::now ();
+    commo()->latencies.push_back(chrono::duration_cast<chrono::microseconds>(request_end_time - request_start_time).count());
+    // Log_info("****wait over for par_id: %d and event: %ld with latency: %d microseconds", par_id_, sp_quorum.get(), chrono::duration_cast<chrono::microseconds>(request_end_time - request_start_time).count());
+
     if (sp_quorum->Yes())
     {
       if (ess_cc->machine_id == 0)

@@ -11,6 +11,7 @@ namespace janus
 {
   thread_local bool hasPrinted = false;
   shared_ptr<DirectionThroughput> MultiPaxosCommo::dir_throughput_cal = make_shared<DirectionThroughput>();
+  shared_ptr<DynamicRoutingManager> MultiPaxosCommo::dynamic_routing_manager = make_shared<DynamicRoutingManager>();
   MultiPaxosCommo::MultiPaxosCommo(PollMgr *poll) : Communicator(poll)
   {
     //  verify(poll != nullptr);
@@ -195,11 +196,6 @@ namespace janus
         i32 ballot;
         MarshallDeputy response_val;
         fu->get_reply() >> ballot >> valid >> response_val;
-        // Log_info("++++ BroadcastPrepare2: received response: %d %d", ballot, valid);
-        // if (valid == 1)
-        //   Log_info("++++ valid received is 1; BroadcastPrepare2: received response: %d %d with gettid: %d", ballot, valid, gettid());
-        // if (!response_val.sp_data_)
-        //   Log_info("++++ response_val.sp_data_ is null");
         cb(response_val, ballot, valid);
         e->FeedResponse(valid);
       };
@@ -240,88 +236,6 @@ namespace janus
       Future::safe_release(f);
     }
     return e;
-  }
-
-  shared_ptr<PaxosAcceptQuorumEvent>
-  MultiPaxosCommo::CrpcBroadcastHeartBeat(parid_t par_id,
-                                          shared_ptr<Marshallable> cmd,
-                                          const function<void(ballot_t, int)> &cb,
-                                          siteid_t leader_site_id)
-  {
-    Log_debug("inside CrpcBroadcastHeartbeat");
-    int n = Config::GetConfig()->GetPartitionSize(par_id);
-    int k = (n % 2 == 0) ? n / 2 : (n / 2 + 1);
-    auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, k);
-    auto proxies = rpc_par_proxies_[par_id];
-
-    std::vector<uint16_t> sitesInfo_;
-
-    for (auto &p : proxies)
-    {
-      auto id = p.first;
-      Log_debug("id is: %d and leader_site_id is: %d", id, leader_site_id);
-      if (id != leader_site_id)
-      {                           
-        sitesInfo_.push_back(id); 
-      }                           
-    }
-
-    sitesInfo_.push_back(leader_site_id);
-
-    for (auto &p : proxies)
-    {
-      auto proxy = (MultiPaxosProxy *)p.second;
-      // FutureAttr fuattr;
-      // fuattr.callback = [e, cb] (Future* fu) {
-      //   i32 valid;
-      //   i32 ballot;
-      //   fu->get_reply() >> ballot >> valid;
-      //   cb(ballot, valid);
-      //   e->FeedResponse(valid);
-      // };
-      if (p.first != sitesInfo_[0])
-      {
-        continue;
-      }
-      verify(cmd != nullptr);
-      MarshallDeputy md(cmd);
-      std::vector<BalValResult> state;
-      uint64_t crpc_id = reinterpret_cast<uint64_t>(&e);
-      // // Log_info("*** crpc_id is: %d", crpc_id); // verify it's never the same
-      cRPCEvents_l_.lock();
-      verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
-      cRPCEvents[crpc_id] = std::make_pair(cb, e);
-      cRPCEvents_l_.unlock();
-
-      auto f = proxy->async_CrpcHeartbeat(crpc_id, md, sitesInfo_, state);
-      Future::safe_release(f);
-
-      break;
-    }
-    return e;
-  }
-
-  void MultiPaxosCommo::CrpcHeartbeat(parid_t par_id,
-                                      uint64_t id,
-                                      MarshallDeputy cmd,
-                                      std::vector<uint16_t> &addrChain,
-                                      std::vector<BalValResult> &state)
-  {
-    // Log_debug("**** inside MultiPaxosCommo::CrpcHeartbeat");
-    auto proxies = rpc_par_proxies_[par_id];
-    for (auto &p : proxies)
-    {
-      if (p.first != addrChain[0])
-      {
-        continue;
-      }
-      // Log_debug("**** inside MultiPaxosCommo::CrpcHeartbeat; p.first:%d", p.first);
-      auto proxy = (MultiPaxosProxy *)p.second;
-      auto f = proxy->async_CrpcHeartbeat(id, cmd, addrChain, state);
-      Future::safe_release(f);
-      // Log_debug("**** returning MultiPaxosCommo::CrpcHeartbeat");
-      break;
-    }
   }
 
   // not used
@@ -468,32 +382,82 @@ namespace janus
     return e;
   }
 
+  void MultiPaxosCommo::CrpcDynamicRoutingProbe(siteid_t leader_site_id){
+    Log_info("MultiPaxosCommo::CrpcDynamicRoutingProbe called");
+    
+    Coroutine::CreateRun([this, leader_site_id](){
+      int id = 0;
+      // initialize the groups
+      auto proxies = rpc_par_proxies_[0];
+      vector<int> node_ids;
+      for (auto &p : proxies)
+      {
+        auto proxy = (MultiPaxosProxy *)p.second;
+        FutureAttr fuattr;
+        int st = p.first;
+        if (st == leader_site_id) {
+          continue;
+        }
+        node_ids.push_back(st);
+      }
+      dynamic_routing_manager->init_probing_queues(node_ids);
+      dynamic_routing_manager->initializeGroups(node_ids);
+      while(dynamic_routing_manager->loop_var){
+        auto ev = Reactor::CreateSpEvent<TimeoutEvent>(dynamic_routing_manager->timeout_period);
+        Log_info("$$$$ MultiPaxosCommo::CrpcDynamicRoutingProbe; wait STARTED");
+        ev->Wait();
+        Log_info("$$$$ MultiPaxosCommo::CrpcDynamicRoutingProbe; wait ENDED");
+        // auto proxies = rpc_par_proxies_[0];
+        if (id > 0) {          
+          dynamic_routing_manager->computeGroups();
+        }
+        for (auto &p : proxies)
+        {
+          auto proxy = (MultiPaxosProxy *)p.second;
+          FutureAttr fuattr;
+          int st = p.first;
+          if (st == leader_site_id) {
+            continue;
+          }
+          id++;
+          dynamic_routing_manager->add_request_start_time(id, st);
+          fuattr.callback = [id, st](Future *fu)
+          {
+            dynamic_routing_manager->add_request_end_time(id, st);
+          };
+          auto f = proxy->async_CrpcProbe(id, fuattr);
+          Future::safe_release(f);
+        }
+      }
+      Log_info("$$$$ ending coroutine");
+    });
+  }
+
   shared_ptr<PaxosAcceptQuorumEvent>
   MultiPaxosCommo::CrpcBroadcastBulkAccept(parid_t par_id,
                                            shared_ptr<Marshallable> cmd,
                                            const function<void(ballot_t, int)> &cb,
                                            siteid_t leader_site_id)
   {
-    // Log_info("**** inside CrpcBroadcastBulkAccept, with par_id: %d", par_id);
-    // Log_info("**** inside CrpcBroadcastBulkAccept, with size of cmd is: %d", sizeof(cmd));
-    // static bool hasPrinted = false;  // Static variable to track if it has printed
-
-    // bool dynamic = true;
-    // bool alternate = false;
-    // bool slow = false;
-    // bool fast = false;
-
     if (!hasPrinted)
     {
       Log_info("in cRPC;");
       if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
         Log_info("#### dynamic routing");
-        if (par_id == 0) 
+        if (par_id == 0){ 
           dir_throughput_cal->calc_latency(par_id); // dynamic: uncomment
+          // CrpcDynamicRoutingProbe(leader_site_id);
+        }
       } 
       else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::ALTERNATE)) Log_info("#### alternate routing");
       else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::SLOW)) Log_info("#### slow routing");
       else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::FAST)) Log_info("#### fast routing");
+      else if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::NEW_DYNAMIC)){ 
+        Log_info("#### new dynamic routing");
+        // Log_info("++++ cp0 par_id: %ld", par_id);
+        if (par_id == 0)
+          CrpcDynamicRoutingProbe(leader_site_id);
+      }
       // Log_info("in cRPC; par_id:%d, cpu: %d", par_id, sched_getcpu());
       hasPrinted = true; // Update the static variable      
     }
@@ -506,6 +470,7 @@ namespace janus
 
     sitesInfo_.push_back(leader_site_id);
 
+    // Log_info("++++ cp1 par_id: %ld", par_id);
     // dynamic: uncomment
     if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
       auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
@@ -566,6 +531,14 @@ namespace janus
       }
     }
 
+    if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::NEW_DYNAMIC)){
+      // Log_info("++++ cp2 par_id: %ld", par_id);
+      for (auto el: dynamic_routing_manager->getNodesOrder()){
+        // Log_info("Pushing element %d into the sitesInfo", el);
+        sitesInfo_.push_back(leader_site_id+el);
+      }
+    }
+    // Log_info("++++ cp22 par_id: %ld sitesInfo_.size(): %d", par_id, sitesInfo_.size());
     // dynamic: comment
     if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::ALTERNATE)){
       if (direction) {
@@ -613,21 +586,17 @@ namespace janus
     }
 
     sitesInfo_.push_back(leader_site_id);
-
-    verify(sitesInfo_[0] == leader_site_id); // kshivam: delete later
+    // Log_info("++++ cp3 par_id: %ld", par_id);
+    // verify(sitesInfo_[0] == leader_site_id); // kshivam: delete later
 
     for (auto &p : proxies) { // kshivam: optimize later to not loop over proxies; save leader proxy in previous step
       auto proxy = (MultiPaxosProxy *)p.second;
       if (p.first == sitesInfo_[0]) {
         verify(cmd != nullptr);
         MarshallDeputy md(cmd);
-        // Log_info("**** inside CrpcBroadcastBulkAccept, with size of md is: %d", sizeof(md));
         std::vector<BalValResult> state;
-        // int sizeA = sizeof(&e);
-        // int sizeB = sizeof(uint64_t);
-        // verify(sizeA == sizeB);
         uint64_t crpc_id = ++crpc_id_counter;
-
+        // Log_info("++++ cp4 par_id: %ld", par_id);
         // dynamic: uncomment
         if (Config::GetConfig()->getRoutingOption() == static_cast<int>(RoutingOptions::DYNAMIC)){
           auto current_throughput_probe_status = dir_throughput_cal->get_throughput_probe();
@@ -656,7 +625,7 @@ namespace janus
         verify(cRPCEvents.find(crpc_id) == cRPCEvents.end());
         cRPCEvents[crpc_id] = std::make_pair(cb, e);
         cRPCEvents_l_.unlock();
-        // Log_info("++++ sending request par_id: %ld, crpc_id: %ld and direction: %d", par_id, crpc_id, !direction);
+        // Log_info("++++ sending crpc_id:%d par_id: %ld", crpc_id, par_id);
         auto f = proxy->async_CrpcBulkAccept(crpc_id, md, sitesInfo_, state);
         Future::safe_release(f);
         break;
@@ -672,20 +641,17 @@ namespace janus
                                        std::vector<uint16_t> &addrChain,
                                        std::vector<BalValResult> &state)
   {
-    // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d", par_id);
+    // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp0 with par_id: %d, recv_id: %d", par_id, recv_id);
     // Log_info("#### MultiPaxosCommo::CrpcBulkAccept; cp 0 with par_id:%d, crpc_id: %ld", par_id, id);
     auto proxies = rpc_par_proxies_[par_id];
     for (auto &p : proxies)
     {
+      // Log_info("#### inside MultiPaxosCommo::CrpcBulkAccept cp1 with par_id: %d, p.first: %d", par_id, p.first);
       if (p.first == recv_id)
       {
         auto proxy = (MultiPaxosProxy *)p.second;
         // Log_info("#### sending crpcBulkAccept request; par_id: %d", par_id);
         auto f = proxy->async_CrpcBulkAccept(id, cmd, addrChain, state);
-        if (f == nullptr)
-        {
-          // Log_info("############################ UNLIKELY, future is nullptr");
-        }
         Future::safe_release(f);
         break;
       }

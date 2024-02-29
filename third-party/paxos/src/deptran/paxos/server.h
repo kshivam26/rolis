@@ -95,11 +95,6 @@ class PaxosServer : public TxLogServer {
                     i32* valid,
                     const function<void()> &cb);
 
-  void OnCrpcHeartbeat(const uint64_t& id,
-                  const MarshallDeputy& cmd, 
-                  const std::vector<uint16_t>& addrChain, 
-                  const std::vector<BalValResult>& state);
-
   void OnBulkAccept(shared_ptr<Marshallable> &cmd,
                     i32* ballot,
                     i32 *valid,
@@ -142,6 +137,8 @@ class PaxosServer : public TxLogServer {
                   i32* ballot,
                   i32 *valid,
                   const function<void()> &cb);
+
+  void OnCrpcProbe(const uint64_t& id);
 
   void RunPendingCommitCoroutine(){
     for(auto coro: ready_commit_coro){

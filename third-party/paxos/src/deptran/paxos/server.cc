@@ -260,67 +260,6 @@ namespace janus
     }
   }
 
-  void PaxosServer::OnCrpcHeartbeat(const uint64_t &id,
-                                    const MarshallDeputy &cmd,
-                                    const std::vector<uint16_t> &addrChain,
-                                    const std::vector<BalValResult> &state)
-  {
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp0, with state.size():%d", state.size());
-    if (addrChain.size() == 1)
-    {
-      Log_debug("==== OnCrpcHeartbeat reached the final link in the chain");
-      auto x = (MultiPaxosCommo *)(this->commo_);
-      verify(x->cRPCEvents.find(id) != x->cRPCEvents.end()); // #profile - 1.40%
-      // Log_debug("inside FpgaRaftServer::OnCRPC2; checkpoint 2 @ %d", gettid());
-      auto ev = x->cRPCEvents[id]; // imagine this to be a pair
-      x->cRPCEvents.erase(id);
-
-      // Log_debug("==== inside demoserviceimpl::cRPC; results state is following");
-      // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);   // #profile - 0.54%
-      for (auto el : state)
-      {
-        // Log_debug("inside FpgaRaftServer::OnCRPC2; checkpoint 3 @ %d", gettid());
-        ev.first(el.ballot, el.valid);
-        // bool y = ((el.followerAppendOK == 1) && (this->IsLeader()) && (currentTerm == el.followerCurrentTerm));
-        ev.second->FeedResponse(el.valid);
-      }
-
-      Log_debug("==== OnCrpcHeartbeat returning from cRPC");
-      return;
-    }
-
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp1");
-    // Log_debug("calling dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
-    // auto c = dynamic_pointer_cast<AppendEntriesCommand>(cmd.sp_data_);
-    // Log_debug("return dynamic_pointer_cast<AppendEntriesCommand>(state.sp_data_)");
-    BalValResult res;
-    auto r = Coroutine::CreateRun([&]()
-                                  { this->OnHeartbeat(
-                                        const_cast<MarshallDeputy &>(cmd).sp_data_,
-                                        &res.ballot,
-                                        &res.valid,
-                                        []() {}); }); // #profile - 2.88%
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp2, with ballot: %d, and valid: %d", res.ballot, res.valid);
-    std::vector<BalValResult> st(state);
-    // auto st = dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_);  // #profile - 1.23%  ==> dont think can do anything about it
-    // Log_debug("returned dynamic_pointer_cast<AppendEntriesCommandState>(state.sp_data_)");
-    st.push_back(res);
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp3; current size of addrChain is: %d", addrChain.size());
-    vector<uint16_t> addrChainCopy(addrChain.begin() + 1, addrChain.end());
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp4");
-    // auto addrChainCopy = addrChain;
-    // addrChainCopy.erase(addrChainCopy.begin());
-    // Log_debug("inside FpgaRaftServer::OnCRPC3; calling CrpcAppendEntries3");
-    // Log_debug("*** inside FpgaRaftServer::OnCRPC; cp 2 tid: %d", gettid());
-    parid_t par_id = this->frame_->site_info_->partition_id_;
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp5; par_id: %d", par_id);
-    ((MultiPaxosCommo *)(this->commo_))->CrpcHeartbeat(par_id, id, cmd, addrChainCopy, st);
-
-    // Log_debug("**** inside PaxosServer::OnCrpcHeartbeat cp6");
-    // Log_debug("==== returning from void FpgaRaftServer::OnCRPC");
-    // Log_debug("*** inside FpgaRaftServer::OnCRPC; cp 3 tid: %d", gettid());
-  }
-
   void PaxosServer::OnBulkPrepare2(shared_ptr<Marshallable> &cmd,
                                    i32 *ballot,
                                    i32 *valid,
@@ -665,18 +604,18 @@ namespace janus
       }
 
       // kshivam-issue: comment later
-      // Log_info("#### OnCrpcBulkAccept; event is ready, for cpar_id: %d, crpc_id: %ld; will erase id from crpc_Events", par_id, id);
+      // Log_info("#### OnCrpcBulkAccept; event is ready, for par_id: %d, crpc_id: %ld; will erase id from crpc_Events", par_id, id);
       // x->cRPCEvents.erase(id);
 
       // // kshivam-issue: uncomment later? // probably not a problem with this. must be a problem with quorum
-      // if(ev.second->IsReady()){
-      //   // Log_info("#### OnCrpcBulkAccept; event is ready, for cpar_id: %d, crpc_id: %ld; will erase id from crpc_Events", par_id, id);
-      //   x->cRPCEvents.erase(id);
-      // }
-      // else{
-      //   verify(0); // unlikely but possible; happens when one of the followers returns a No
-      //   // Log_info("#### OnCrpcBulkAccept; event is not ready,for crpc_id: %ld", par_id, id);
-      // }
+      if(ev.second->IsReady()){
+        // Log_info("#### OnCrpcBulkAccept; event %ld is ready, for par_id: %d, crpc_id: %ld; will erase id from crpc_Events", ev.second.get(), par_id, id);
+        x->cRPCEvents.erase(id);
+      }
+      else{
+        verify(0); // unlikely but possible; happens when one of the followers returns a No
+        // Log_info("#### OnCrpcBulkAccept; event is not ready,for crpc_id: %ld", par_id, id);
+      }
       return;
     }
     BalValResult res;
@@ -726,10 +665,10 @@ namespace janus
       // Log_info("#### PaxosServer::OnCrpcBulkAccept; quorum reached, sent response back to leader, par_id: %d, crpc_id: %ld; value of k: %d", par_id, id, k);
     }
 
-    Log_debug("#### PaxosServer::OnCrpcBulkAccept; cp 1, crpc_id: %ld; value of k: %d", id, k);
+    // Log_debug("#### PaxosServer::OnCrpcBulkAccept; cp 1, crpc_id: %ld; value of k: %d", id, k);
     ((MultiPaxosCommo *)(this->commo_))->CrpcBulkAccept(par_id, addrChainCopy[0], id, cmd, addrChainCopy, st);
 
-    // Log_info("#### inside PaxosServer::CrpcBulkAccept cp6 with par_id:%d, crpc_id: %ld", par_id, id);
+    // Log_info("#### inside PaxosServer::CrpcBulkAccept cp6 with par_id: %d, crpc_id: %ld", par_id, id);
   }
 
   // kshivam: maybe later change OnBulkAccept to return false/true? // delete later?
@@ -744,6 +683,10 @@ namespace janus
       return false;
     }
     return true;
+  }
+
+  void PaxosServer::OnCrpcProbe(const uint64_t& id){
+    Log_info("$$$$ Received probing request with id: %ld", id);
   }
 
   void PaxosServer::OnSyncCommit(shared_ptr<Marshallable> &cmd,
@@ -1060,6 +1003,9 @@ namespace janus
       if (this->leader_id == this->loc_id_ && dynamic_cast<LogEntry&>(*commit_exec[i]->committed_cmd_).length == 0){
         auto x = (MultiPaxosCommo *)(this->commo_);
         x->dir_throughput_cal->loop_var = false;
+        Log_info("############ Setting the loop_var to false");
+        x->dynamic_routing_manager->loop_var = false;
+        x->printLatencies();
       }
       
       app_next_(*commit_exec[i]->committed_cmd_); // kshivam: Next is invoked here

@@ -78,6 +78,7 @@ namespace janus
         double dir_prob = 0.5;
         parid_t par_id_= -1;
         bool started = false;
+        int num_no_change = 0;
         void add_request_start_time(uint64_t crpc_id, uint64_t direction);
         void add_request_end_time(uint64_t crpc_id);
         void decrement_dir_prob(double factorToDecrement=0.5);
@@ -104,33 +105,6 @@ namespace janus
                 latency_queues.push_back(q);                
             }
         }
-
-        // void init_throughput_calculator(int num_directions)
-        // {
-        //     if (dir_to_throughput_calculator.size() != 0)
-        //     {
-        //         return;
-        //     }
-        //     for (int i = 0; i < num_directions; i++)
-        //     {
-        //         auto newObj = new ThroughputCalculator();
-        //         dir_to_throughput_calculator.push_back(newObj);
-        //     }
-        // }
-
-        // void init_throughput_store(int num_directions)
-        // {
-        //     if (dir_to_throughput_data.size() != 0)
-        //     {
-        //         return;
-        //     }
-        //     for (int i = 0; i < num_directions; i++)
-        //     {
-        //         RequestData data;
-        //         data.crpc_id = 0;
-        //         dir_to_throughput_data.push_back(data);
-        //     }
-        // }
 
         int get_throughput_probe()
         {

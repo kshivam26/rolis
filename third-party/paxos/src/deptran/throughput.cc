@@ -211,34 +211,6 @@ namespace janus
             decrement_throughput_probe();
             return;
         }
-
-
-        // if (latency_queues[direction].add(crpc) == 0)
-        // {
-        //     // Log_info("Adding start time for crpc_id %lu and direction %lu", crpc_id, direction);
-        //     Log_info("#### Adding start time for par_id: %ld, crpc_id: %ld and direction: %d", par_id_, crpc_id, direction);
-        //     dir_to_throughput_data[direction].crpc_id = crpc_id;
-        //     dir_to_throughput_data[direction].start_time = chrono::system_clock::now();
-        //     dir_to_throughput_data[direction].flag = true;
-        //     decrement_throughput_probe();
-        // }
-        // else
-        // {
-        //     Log_info("#### UNLIKELY: The previous par_id: %ld, crpc_id: %ld and direction: %d", par_id_, dir_to_throughput_data[direction].crpc_id, direction);
-        //     // witnessing that it sometimes takes 5-6 seconds for a request to come back through the slow node, in this case this code will trigger
-        //     // This should not happen CHECK HOW TO HANDLE THIS
-        //     if (direction == 0){
-        //         Log_info("#### UNLIKELY: par_id: %ld, prob latency very high for direction 0; decrementing prob", par_id_);
-        //         decrement_dir_prob();
-        //     }
-        //     else{
-        //         Log_info("#### UNLIKELY: par_id: %ld, prob latency very high for direction 1; decrementing prob", par_id_);
-        //         increment_dir_prob();
-        //     }
-        //     decrement_throughput_probe();
-        //     return;
-        //     // verify(0);
-        // }
     }
 
 
@@ -337,7 +309,7 @@ namespace janus
                 // }
 
                 auto temp_dir_1_lat = latency_queues[0].findMedian();
-                auto temp_dir_2_lat = latency_queues[1].findMedian();;
+                auto temp_dir_2_lat = latency_queues[1].findMedian();
                 
                 double diff = abs(temp_dir_1_lat - temp_dir_2_lat);
                 if (diff < 1000 || (temp_dir_1_lat == 0 && temp_dir_2_lat == 0))
@@ -367,9 +339,14 @@ namespace janus
     void DirectionThroughput::decrement_dir_prob(double factorToDecrement){
         double result = log10(factorToDecrement)*0.1;
         auto prevValue = dir_prob;
-        if (dir_prob == 1.0 && result < 0.1){ // kshivam-tp: simplify this
+        if (dir_prob == 1.0 && result < 0.1 && num_no_change < 3){ // kshivam-tp: simplify this
+            if (result > 0)
+                num_no_change++;
+            else
+                num_no_change = 0;
             return;
         }
+        num_no_change = 0;
         dir_prob = std::max(0.0, dir_prob - result);
         if (prevValue == 0.0 && dir_prob == 0.0){
             incrementTimeout();
@@ -382,9 +359,14 @@ namespace janus
     void DirectionThroughput::increment_dir_prob(double factorToIncrement){
         double result = log10(factorToIncrement)*0.1;
         auto prevValue = dir_prob;
-        if (dir_prob == 0.0 && result < 0.1){
+        if (dir_prob == 0.0 && result < 0.1 && num_no_change < 3){
+            if (result > 0)
+                num_no_change++;
+            else
+                num_no_change = 0;
             return;
         }        
+        num_no_change = 0;
         dir_prob = std::min(1.0, dir_prob + result);
         if (prevValue == 1.0 && dir_prob == 1.0){
             incrementTimeout();
@@ -399,7 +381,7 @@ namespace janus
     }
 
     void DirectionThroughput::incrementTimeout(){
-        timeout_period = std::min(timeout_period*2, 8000000);
+        timeout_period = std::min(timeout_period*2, 64000000);
     }
     
     double DirectionThroughput::get_dir_prob()

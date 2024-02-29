@@ -49,48 +49,48 @@ build_code
 
 # Define arrays containing parameter values
 num_threads=(10)   # Replace these values with your actual num_threads values
-crpc_options=(5)         # Replace these values with your actual crpc_options values
+crpc_options=(5 0)         # Replace these values with your actual crpc_options values
 # num_threads=(15)   # Replace these values with your actual num_threads values
 # crpc_options=(4) 
 bw_options=(3) # for bw 5, #threads=15, the bw for dynamic doesn't reach more than 3.1gbps and the leader cpu is fully utilized
-# batch_options=(200 500 1000 2000 3000)
+batch_options=(200 500 1000 2000 3000)
 MAX_RETRIES=3
 
-
+bw_option=3
 echo "cp1_chain_run"
 # evaluation_file="crpc_evaluation/evaluation.txt"
-for bw_option in "${bw_options[@]}"; do
+for batch_option in "${batch_options[@]}"; do
   # Get the current date and time
   current_datetime=$(date +"%Y%m%d_%H%M%S")
   
   # Create the output folder with the current date and time
-  sub_output_folder="evalFI0_output_${bw_option}_gbps_${current_datetime}"
+  sub_output_folder="output_${bw_option}_gbps_${batch_option}_${current_datetime}"
   output_folder="crpc_evaluation/${sub_output_folder}"
   mkdir "$output_folder"
 
 # Iterate through each combination of parameters
   for thread_value in "${num_threads[@]}"; do
       for option_value in "${crpc_options[@]}"; do        
-        # if [ "$bw_option" -eq 1 ] && [$thread_value > 6]; then
-        #     # Certain conditions for option 1
-        #     echo "Option 1: Continuing certain conditions"
-        #     # Perform actions for option 1
-        #     continue  # This continues to the next iteration of the loop
-        # elif [ "$bw_option" -eq 3 ] && [$thread_value > 12]; then
-        #     # Certain conditions for option 2
-        #     echo "Option 2: Checking conditions for continue"
-        #     continue
-        #     # Perform actions for option 2
-        # elif [ "$bw_option" -eq 5 ] && [$thread_value > 20]; then
-        #     # Certain conditions for option 3
-        #     echo "Option 3: Performing actions"
-        #     continue
-        #     # Perform actions for option 3
-        # else
-        #     # Other conditions not covered above
-        #     echo "Other option: $bw_option"
-        #     # Perform actions for other options
-        # fi
+        if [ "$bw_option" -eq 1 ] && [$thread_value > 6]; then
+            # Certain conditions for option 1
+            echo "Option 1: Continuing certain conditions"
+            # Perform actions for option 1
+            continue  # This continues to the next iteration of the loop
+        elif [ "$bw_option" -eq 3 ] && [$thread_value > 12]; then
+            # Certain conditions for option 2
+            echo "Option 2: Checking conditions for continue"
+            continue
+            # Perform actions for option 2
+        elif [ "$bw_option" -eq 5 ] && [$thread_value > 20]; then
+            # Certain conditions for option 3
+            echo "Option 3: Performing actions"
+            continue
+            # Perform actions for option 3
+        else
+            # Other conditions not covered above
+            echo "Other option: $bw_option"
+            # Perform actions for other options
+        fi
 
         # Delete the input file
         rm "$latency_input_file"
@@ -110,15 +110,15 @@ for bw_option in "${bw_options[@]}"; do
             output_file="${output_folder}/leader_output_${bw_option}_${thread_value}_${option_value}.txt"
 
             # Execute commands with the parameters
-            timeout 4m sudo docker exec -i chain_l /root/rolis/cpuset_b0.sh "$thread_value" "$option_value" >& $output_file &
+            timeout 4m sudo docker exec -i chain_l /root/rolis/cpuset_b0.sh "$thread_value" "$option_value" "$batch_option" >& $output_file &
             pid1=$!
             echo "$pid1"
 
-            timeout 4m sudo docker exec -i chain_f1 /root/rolis/cpuset_b1.sh "$thread_value" "$option_value" >&  crpc_evaluation/f1.txt &
+            timeout 4m sudo docker exec -i chain_f1 /root/rolis/cpuset_b1.sh "$thread_value" "$option_value" "$batch_option" >&  crpc_evaluation/f1.txt &
             pid2=$!
             echo "$pid2"
 
-            timeout 4m sudo docker exec -i chain_f2 /root/rolis/cpuset_b2.sh "$thread_value" "$option_value" 1000 0 >& crpc_evaluation/f2.txt&
+            timeout 4m sudo docker exec -i chain_f2 /root/rolis/cpuset_b2.sh "$thread_value" "$option_value" "$batch_option" >& crpc_evaluation/f2.txt&
             pid3=$!
             echo "$pid3"
 

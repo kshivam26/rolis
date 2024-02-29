@@ -69,12 +69,6 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
                   i32* valid,
                   rrr::DeferredReply* defer) override;
 
-  void CrpcHeartbeat(const uint64_t& id, 
-                    const MarshallDeputy& cmd, 
-                    const std::vector<uint16_t>& addrChain, 
-                    const std::vector<BalValResult>& state, 
-                    rrr::DeferredReply* defer);
-
   void BulkPrepare2(const MarshallDeputy& md_cmd,
                      i32* ballot,
                      i32* valid,
@@ -102,6 +96,9 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
                  i32* ballot,
                  i32* valid,
                  rrr::DeferredReply* defer) override;
+
+  void CrpcProbe(const uint64_t& id,
+                rrr::DeferredReply* defer) override;
 
 };
 

@@ -5,6 +5,7 @@
 #include "../communicator.h"
 #include "../throughput.h"
 #include "chrono"
+#include "dynamic_routing_manager.h"
 
 namespace janus
 {
@@ -19,16 +20,33 @@ namespace janus
         DYNAMIC, // 1
         ALTERNATE, // 2
         SLOW, // 3
-        FAST // 4
+        FAST, // 4
+        NEW_DYNAMIC // 5
     };
     uint64_t crpc_id_counter = 0;
     bool direction = false;
     double dirProbability = 0.5;
     SpinLock dir_l_;
-
     static shared_ptr<DirectionThroughput> dir_throughput_cal;
+    static shared_ptr<DynamicRoutingManager> dynamic_routing_manager;
     uint64_t crpc_dir_0_counter = 0;
     uint64_t crpc_dir_1_counter = 0;
+
+    vector<int> latencies; // kshivam: delete later. added ds for capturing latency for accept request for chaining and broadcast
+
+    // kshivam: delete later
+    void printLatencies() {
+      std::ofstream outputFile("crpc_evaluation/output.txt", std::ios::app);      
+      if (outputFile.is_open()) {
+          for (int latency : latencies) {
+              outputFile << latency << "\n"; // Assuming each latency is printed on a new line
+          }
+          outputFile.close();
+          std::cout << "Latencies successfully written to file.\n";
+      } else {
+          std::cerr << "Unable to open file for writing.\n";
+      }
+    }    
 
 
     std::unordered_map<uint64_t, pair<function<void(ballot_t, int)>, shared_ptr<PaxosAcceptQuorumEvent>>>
@@ -69,18 +87,6 @@ namespace janus
                        shared_ptr<Marshallable> cmd,
                        const std::function<void(ballot_t, int)> &cb) override;
 
-    shared_ptr<PaxosAcceptQuorumEvent>
-    CrpcBroadcastHeartBeat(parid_t par_id,
-                           shared_ptr<Marshallable> cmd,
-                           const function<void(ballot_t, int)> &cb,
-                           siteid_t id);
-    virtual void
-    CrpcHeartbeat(parid_t par_id,
-                  uint64_t id,
-                  MarshallDeputy cmd,
-                  std::vector<uint16_t> &addrChain,
-                  std::vector<BalValResult> &state);
-
     virtual shared_ptr<PaxosAcceptQuorumEvent>
     BroadcastSyncNoOps(parid_t par_id,
                        shared_ptr<Marshallable> cmd,
@@ -114,6 +120,9 @@ namespace janus
                    MarshallDeputy cmd,
                    std::vector<uint16_t> &addrChain,
                    std::vector<BalValResult> &state);
+
+    virtual void
+    CrpcDynamicRoutingProbe(siteid_t leader_site_id);
 
     shared_ptr<PaxosAcceptQuorumEvent>
     BroadcastBulkDecide(parid_t par_id,

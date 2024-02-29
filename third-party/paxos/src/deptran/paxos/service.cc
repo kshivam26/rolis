@@ -87,24 +87,6 @@ namespace janus
                                                std::bind(&rrr::DeferredReply::reply, defer)); });
   }
 
-  // kshivam-TODO: add the code
-  void MultiPaxosServiceImpl::CrpcHeartbeat(const uint64_t &id,
-                                            const MarshallDeputy &cmd,
-                                            const std::vector<uint16_t> &addrChain,
-                                            const std::vector<BalValResult> &state,
-                                            rrr::DeferredReply *defer)
-  {
-    // Log_debug("**** inside MultiPaxosServiceImpl::CrpcHeartbeat");
-    verify(sched_ != nullptr);
-    Coroutine::CreateRun([&]()
-                         {
-    sched_->OnCrpcHeartbeat(id,
-                            cmd,
-                            addrChain,
-                            state);
-    defer->reply(); });
-  }
-
   void MultiPaxosServiceImpl::BulkPrepare2(const MarshallDeputy &md_cmd,
                                            i32 *ballot,
                                            i32 *valid,
@@ -248,6 +230,16 @@ void MultiPaxosServiceImpl::BulkDecide(const MarshallDeputy& md_cmd,
                                                std::bind(&rrr::DeferredReply::reply, defer));
                            // defer->reply();
                          });
+  }
+
+  void MultiPaxosServiceImpl::CrpcProbe(const uint64_t &id,
+                                             rrr::DeferredReply *defer)
+  {
+    // Log_debug("**** inside MultiPaxosServiceImpl::CrpcBulkDecide");
+    verify(sched_ != nullptr);
+    Coroutine::CreateRun([&](){
+      sched_->OnCrpcProbe(id);
+      defer->reply(); });
   }
 
 } // namespace janus;
