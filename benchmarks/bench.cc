@@ -556,13 +556,13 @@ bench_runner::run_without_stats()
                   n_commits += workers[j]->get_ntxn_commits();
 		  //std::cout << "time: " << j << ": " << workers[j]->get_ntxn_commits() << std::endl;
               }
-              if (i==4*10) n_commits_5 = n_commits;
-              if (i==24*10) n_commits_25 = n_commits;
+              if (i==29*10) n_commits_5 = n_commits;
+              if (i==149*10) n_commits_25 = n_commits;
               std::cout << "[time: " << timeSinceEpochMillisecBench() << "] # of commits: " << n_commits  << std::endl;
           }
           running = false;
       }
-      printf("[agg_throughput-5-25] [%lu-%lu]throughput without warmup and cool-down: %f\n", n_commits_25, n_commits_5, (n_commits_25 - n_commits_5) / 20.0);
+      printf("[agg_throughput-150-30] [%lu-%lu]throughput without warmup and cool-down: %f\n", n_commits_25, n_commits_5, (float)(n_commits_25 - n_commits_5) / 120);
       __sync_synchronize();
       std::cout << "finish __sync_synchronize\n";
       for (size_t i = 0; i < nthreads; i++) {
